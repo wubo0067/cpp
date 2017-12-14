@@ -10,7 +10,11 @@ licenses(["notice"])  # Apache 2.0
 
 cc_library(
     name = "int128",
-    srcs = ["int128.cc"],
+    srcs = [
+        "int128.cc",
+        "int128_have_intrinsic.inc",
+        "int128_no_intrinsic.inc",
+    ],
     hdrs = ["int128.h"],
     copts = ABSL_DEFAULT_COPTS,
     deps = [
@@ -24,6 +28,7 @@ cc_test(
     size = "small",
     srcs = [
         "int128_test.cc",
+        "int128_test_unsigned_ostream_cases.inc",
     ],
     copts = ABSL_TEST_COPTS,
     deps = [
