@@ -27,10 +27,7 @@ load(
 
 package(
     default_visibility = ["//visibility:public"],
-    features = [
-        "parse_headers",
-        "header_modules",
-    ],
+    features = ["parse_headers"],
 )
 
 licenses(["notice"])  # Apache 2.0
@@ -82,6 +79,7 @@ cc_library(
 cc_library(
     name = "internal",
     srcs = [
+        "internal/ostringstream.cc",
         "internal/utf8.cc",
     ],
     hdrs = [

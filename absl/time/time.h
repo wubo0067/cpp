@@ -291,7 +291,7 @@ Duration Ceil(Duration d, Duration unit);
 // Microseconds()
 // Milliseconds()
 // Seconds()
-// Minutes
+// Minutes()
 // Hours()
 //
 // Factory functions for constructing `Duration` values from an integral number
@@ -361,7 +361,7 @@ Duration Hours(T n) {
 // Example:
 //
 //   absl::Duration d = absl::Milliseconds(1500);
-//   int64_t isec = ToInt64Seconds(d);  // isec == 1
+//   int64_t isec = absl::ToInt64Seconds(d);  // isec == 1
 int64_t ToInt64Nanoseconds(Duration d);
 int64_t ToInt64Microseconds(Duration d);
 int64_t ToInt64Milliseconds(Duration d);
@@ -374,7 +374,7 @@ int64_t ToInt64Hours(Duration d);
 // ToDoubleMilliseconds()
 // ToDoubleSeconds()
 // ToDoubleMinutes()
-// ToDoubleHours
+// ToDoubleHours()
 //
 // Helper functions that convert a Duration to a floating point count of the
 // indicated unit. These functions are shorthand for the `FDivDuration()`
@@ -383,7 +383,7 @@ int64_t ToInt64Hours(Duration d);
 // Example:
 //
 //   absl::Duration d = absl::Milliseconds(1500);
-//   double dsec = ToDoubleSeconds(d);  // dsec == 1.5
+//   double dsec = absl::ToDoubleSeconds(d);  // dsec == 1.5
 double ToDoubleNanoseconds(Duration d);
 double ToDoubleMicroseconds(Duration d);
 double ToDoubleMilliseconds(Duration d);
@@ -506,9 +506,7 @@ std::string UnparseFlag(Duration d);
 //
 // `absl::Time` assumes there are 60 seconds in a minute, which means the
 // underlying time scales must be "smeared" to eliminate leap seconds.
-// POSIX, for example, legislates that a `time_t` value of `536457599` shall
-// correspond to "1986-12-31 23:59:59 +0000".
-//
+// See https://developers.google.com/time/smear.
 //
 // Even though `absl::Time` supports a wide range of timestamps, exercise
 // caution when using values in the distant past. `absl::Time` uses the

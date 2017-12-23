@@ -93,6 +93,15 @@ TEST(Uint128, IntrinsicTypeTraitsTest) {
 }
 #endif  // ABSL_HAVE_INTRINSIC_INT128
 
+TEST(Uint128, TrivialTraitsTest) {
+  static_assert(absl::is_trivially_default_constructible<absl::uint128>::value,
+                "");
+  static_assert(absl::is_trivially_copy_constructible<absl::uint128>::value,
+                "");
+  static_assert(absl::is_trivially_copy_assignable<absl::uint128>::value, "");
+  static_assert(std::is_trivially_destructible<absl::uint128>::value, "");
+}
+
 TEST(Uint128, AllTests) {
   absl::uint128 zero = 0;
   absl::uint128 one = 1;
@@ -418,68 +427,19 @@ TEST(Uint128, ConstexprTest) {
   EXPECT_EQ(minus_two, absl::MakeUint128(-1, -2));
 }
 
-TEST(Uint128, Traits) {
-  EXPECT_TRUE(absl::is_trivially_copy_constructible<absl::uint128>::value);
-  EXPECT_TRUE(absl::is_trivially_copy_assignable<absl::uint128>::value);
-  EXPECT_TRUE(std::is_trivially_destructible<absl::uint128>::value);
-}
-
 TEST(Uint128, OStream) {
-  struct {
+  struct StreamCase {
     absl::uint128 val;
     std::ios_base::fmtflags flags;
     std::streamsize width;
     char fill;
     const char* rep;
-  } cases[] = {
-      // zero with different bases
-      {absl::uint128(0), std::ios::dec, 0, '_', "0"},
-      {absl::uint128(0), std::ios::oct, 0, '_', "0"},
-      {absl::uint128(0), std::ios::hex, 0, '_', "0"},
-      // crossover between lo_ and hi_
-      {absl::MakeUint128(0, -1), std::ios::dec, 0, '_', "18446744073709551615"},
-      {absl::MakeUint128(0, -1), std::ios::oct, 0, '_',
-       "1777777777777777777777"},
-      {absl::MakeUint128(0, -1), std::ios::hex, 0, '_', "ffffffffffffffff"},
-      {absl::MakeUint128(1, 0), std::ios::dec, 0, '_', "18446744073709551616"},
-      {absl::MakeUint128(1, 0), std::ios::oct, 0, '_',
-       "2000000000000000000000"},
-      {absl::MakeUint128(1, 0), std::ios::hex, 0, '_', "10000000000000000"},
-      // just the top bit
-      {absl::MakeUint128(0x8000000000000000, 0), std::ios::dec, 0, '_',
-       "170141183460469231731687303715884105728"},
-      {absl::MakeUint128(0x8000000000000000, 0), std::ios::oct, 0, '_',
-       "2000000000000000000000000000000000000000000"},
-      {absl::MakeUint128(0x8000000000000000, 0), std::ios::hex, 0, '_',
-       "80000000000000000000000000000000"},
-      // maximum absl::uint128 value
-      {absl::MakeUint128(-1, -1), std::ios::dec, 0, '_',
-       "340282366920938463463374607431768211455"},
-      {absl::MakeUint128(-1, -1), std::ios::oct, 0, '_',
-       "3777777777777777777777777777777777777777777"},
-      {absl::MakeUint128(-1, -1), std::ios::hex, 0, '_',
-       "ffffffffffffffffffffffffffffffff"},
-      // uppercase
-      {absl::MakeUint128(-1, -1), std::ios::hex | std::ios::uppercase, 0, '_',
-       "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"},
-      // showbase
-      {absl::uint128(1), std::ios::dec | std::ios::showbase, 0, '_', "1"},
-      {absl::uint128(1), std::ios::oct | std::ios::showbase, 0, '_', "01"},
-      {absl::uint128(1), std::ios::hex | std::ios::showbase, 0, '_', "0x1"},
-      // showbase does nothing on zero
-      {absl::uint128(0), std::ios::dec | std::ios::showbase, 0, '_', "0"},
-      {absl::uint128(0), std::ios::oct | std::ios::showbase, 0, '_', "0"},
-      {absl::uint128(0), std::ios::hex | std::ios::showbase, 0, '_', "0"},
-      // showpos does nothing on unsigned types
-      {absl::uint128(1), std::ios::dec | std::ios::showpos, 0, '_', "1"},
-      // padding
-      {absl::uint128(9), std::ios::dec, 6, '_', "_____9"},
-      {absl::uint128(12345), std::ios::dec, 6, '_', "_12345"},
-      // left adjustment
-      {absl::uint128(9), std::ios::dec | std::ios::left, 6, '_', "9_____"},
-      {absl::uint128(12345), std::ios::dec | std::ios::left, 6, '_', "12345_"},
   };
-  for (const auto& test_case : cases) {
+
+  std::vector<StreamCase> cases = {
+#include "absl/numeric/int128_test_unsigned_ostream_cases.inc"
+  };
+  for (const StreamCase& test_case : cases) {
     std::ostringstream os;
     os.flags(test_case.flags);
     os.width(test_case.width);
