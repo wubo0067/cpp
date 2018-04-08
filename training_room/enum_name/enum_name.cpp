@@ -51,7 +51,7 @@ struct EnumMatch<ENUM_TYPE, ENUM_COUNT, ENUM_COUNT>
 	EnumMatch<enum_type, enum_type##_Count, enum_type(0)>::Do(enum_value)
 
 
-int main()
+int main()leng
 {
 	for(int i = 0; i < TestEnum_Count; i++)
 		printf("%s\n", ENUM_NAME(TestEnum, TestEnum(i)));
