@@ -1,8 +1,8 @@
 Language: Cpp
 AccessModifierOffset: -4
 AlignAfterOpenBracket: false
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
 AlignEscapedNewlinesLeft: false
 AlignOperands: true
 AlignTrailingComments: false
@@ -73,3 +73,7 @@ SpacesInSquareBrackets: true
 Standard: Cpp11
 TabWidth: 4
 UseTab: Never
+BreakBeforeInheritanceComma: true
+ColumnLimit: 85
+IndentCaseLabels: true
+NamespaceIndentation: All
