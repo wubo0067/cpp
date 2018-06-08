@@ -1,17 +1,16 @@
+#include "stdafx.h"
 #include <cstddef>
 #include <stdexcept>
 #include <cstring>
-#include <ostream>
+#include <iostream>
 
 inline std::ostream&
-operator<<( std::ostream& os, string_view const& s )
-{
+operator<<( std::ostream& os, std::string_view const& s ) {
     return os.write( s.data(), s.size() );
 }
 
 template < class T >
-constexpr std::string_view type_name()
-{
+constexpr std::string_view type_name() {
     using namespace std;
 #ifdef __clang__
     string_view p = __PRETTY_FUNCTION__;
@@ -33,8 +32,7 @@ int& foo_lref();
 int&& foo_rref();
 int foo_value();
 
-int main()
-{
+void printtype() {
     int i = 0;
     const int ci = 0;
     std::cout << "decltype(i) is " << type_name< decltype( i ) >() << '\n';
@@ -47,5 +45,5 @@ int main()
     std::cout << "decltype(foo_lref()) is " << type_name< decltype( foo_lref() ) >() << '\n';
     std::cout << "decltype(foo_rref()) is " << type_name< decltype( foo_rref() ) >() << '\n';
     std::cout << "decltype(foo_value()) is " << type_name< decltype( foo_value() ) >() << '\n';
-    return 0;
+    return;
 }

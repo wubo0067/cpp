@@ -1,8 +1,8 @@
+#include "stdafx.h"
 #include <algorithm>
 #include <iostream>
 #include <memory>
 #include <vector>
-#include "stdafx.h"
 
 void test_uniqueptr()
 {
