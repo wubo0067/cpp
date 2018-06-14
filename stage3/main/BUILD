@@ -12,4 +12,6 @@ cc_binary(
         "//lib:hello-time",
     ],
     copts = ["-Ilib",],
+    #linkopts最终会加入到文件中@bazel-out/k8-fastbuild/bin/main/hello-world-2.params
+    linkopts = ["-Wl,-Bdynamic -ldl -lm -lc -lz -lrt -lpthread"],
 )
