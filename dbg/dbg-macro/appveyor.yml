@@ -1,0 +1,20 @@
+image: Visual Studio 2017
+
+environment:
+  matrix:
+    - GENERATOR: "Visual Studio 15 Win64"
+      CONFIG: Release
+      CPP_STANDARD: 17
+
+install:
+  - call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat"
+  - cmake --version
+build_script:
+  - mkdir build && cd build
+  - cmake .. -DCMAKE_CXX_STANDARD="%CPP_STANDARD%" -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake "-G%GENERATOR%"
+  - cmake --build . --config "%CONFIG%"
+test_script:
+  - C:\projects\dbg-macro\build\Release\dbg_macro-example.exe
+  - C:\projects\dbg-macro\build\Release\dbg_macro-tests.exe
+  - C:\projects\dbg-macro\build\Release\dbg_macro-tests-macro_disabled.exe
+deploy: off
