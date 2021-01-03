@@ -1,8 +1,12 @@
-#include <asm/uaccess.h>
-#include <linux/init.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
-#include <linux/proc_fs.h>
+#include <linux/kernel.h> /* We're doing kernel work */
+#include <linux/module.h> /* Specifically, a module */
+#include <linux/proc_fs.h>    /* Necessary because we use the proc fs */
+#include <asm/uaccess.h>  /* for copy_from_user */
+#include <linux/fs.h>
+#include <linux/seq_file.h>
+#include <linux/slab.h>
+
+#define BUFSIZE 128
 
 static int irq = 20;
 module_param(irq, int, 0660);
@@ -12,7 +16,7 @@ module_param(mode, int, 0660);
 
 static struct proc_dir_entry *ent;
 
-static ssize_t calmdev_write(struct file *file, const char __user *buf,
+static ssize_t calmdev_write(struct file *file, const char __user *ubuf,
                              size_t count, loff_t *ppos) {
     int num, c, i, m;
     char buf[BUFSIZE];
@@ -27,7 +31,7 @@ static ssize_t calmdev_write(struct file *file, const char __user *buf,
     return c;
 }
 
-static ssize_t calmdev_read(struct file *file, char __user *buf, size_t count,
+static ssize_t calmdev_read(struct file *file, char __user *ubuf, size_t count,
                             loff_t *ppos) {
     char buf[BUFSIZE];
     int len = 0;
@@ -40,10 +44,22 @@ static ssize_t calmdev_read(struct file *file, char __user *buf, size_t count,
     return len;
 }
 
-static struct file_operations calmdev_ops = {
-    .owner = THIS_MODULE,
-    .read = calmdev_read,
-    .write = calmdev_write,
+static int calmdev_show(struct seq_file *m, void *v) {
+    static char * str = NULL;
+    seq_printf(m, "%s\n", str);
+    return 0;
+}
+
+static int calmdev_open(struct inode *inode, struct file *file) {
+    return single_open(file, calmdev_show, NULL);
+}
+
+static struct proc_ops calmdev_ops = {
+    .proc_lseek = seq_lseek,
+    .proc_read = calmdev_read,
+    .proc_write = calmdev_write,
+    .proc_open = calmdev_open,
+    .proc_release = single_release,
 };
 
 static int calmdev_init(void) {
@@ -52,10 +68,10 @@ static int calmdev_init(void) {
     return 0;
 }
 
-static void hello_exit(void) {
+static void calmdev_exit(void) {
     proc_remove(ent);
     printk(KERN_WARNING "Module exit: bye calm dev\n");
 }
 
-module_init(hello_init);
-module_exit(hello_exit);
+module_init(calmdev_init);
+module_exit(calmdev_exit);
