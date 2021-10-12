@@ -1,0 +1,1 @@
+g++ -o "/root/projects/bits/bin/x64/Debug/bits.out" -Wl,--no-undefined -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack /root/projects/bits/obj/x64/Debug/main.o

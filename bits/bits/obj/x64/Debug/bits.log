@@ -1,0 +1,15 @@
+﻿  正在验证源
+  正在将源远程复制到“47.106.169.81”
+  正在验证体系结构
+  正在验证体系结构
+  正在启动远程生成
+  正在编译源:
+  main.cpp
+E:\develope\cpp_space\bits\bits\main.cpp(17,16): warning : unused variable ‘p’ [-Wunused-variable]
+E:\develope\cpp_space\bits\bits\main.cpp(17,16): warning :   struct Person p = {};
+E:\develope\cpp_space\bits\bits\main.cpp(17,16): warning :                 ^
+E:\develope\cpp_space\bits\bits\main.cpp(35,18): warning : conversion from ‘uint64_t’ {aka ‘long unsigned int’} to ‘uint32_t’ {aka ‘unsigned int’} may change value [-Wconversion]
+E:\develope\cpp_space\bits\bits\main.cpp(35,18): warning :   uint32_t pid1 = tgpid_pid;
+E:\develope\cpp_space\bits\bits\main.cpp(35,18): warning :                   ^~~~~~~~~
+  正在链接对象
+  bits.vcxproj -> E:\develope\cpp_space\bits\bits\bin\x64\Debug\bits.out
