@@ -23,7 +23,8 @@ const char* const __cmd = "../timer.sh";
 // killpid kills pid with SIGTERM.
 int killpid( pid_t pid ) {
 	int ret;
-	debug( LOG_DEBUG, "Request to kill pid %d", pid );
+	debug( "Request to kill pid %d", pid );
+	debug( "-----------------" );
 
 	errno = 0;
 	ret   = kill( pid, SIGTERM );

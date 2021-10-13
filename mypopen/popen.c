@@ -72,10 +72,10 @@ static inline int custom_popene( const char* command, volatile pid_t* pidptr, ch
 				error( "posix_spawn_file_actions_adddup2() failed: %s", strerror( errno ) );
 				goto error_after_posix_spawn_file_actions_init;
 			}
-			else {
-				if ( posix_spawn_file_actions_addopen( &actions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0 ) ) {
-					error( "posix_spawn_file_actions_addopen() failed: %s", strerror( errno ) );
-				}
+		}
+		else {
+			if ( posix_spawn_file_actions_addopen( &actions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0 ) ) {
+				error( "posix_spawn_file_actions_addopen() failed: %s", strerror( errno ) );
 			}
 		}
 	}
@@ -183,7 +183,7 @@ static int32_t custom_pclose( FILE* fp, pid_t pid ) {
 	int32_t ret = 0;
 	siginfo_t info;
 
-	debug( LOG_DEBUG, "Request to pclose on pid: %d", pid );
+	debug( "Request to pclose on pid: %d", pid );
 
 	if ( fp ) {
 		// 关闭父进程pipe读
@@ -195,7 +195,7 @@ static int32_t custom_pclose( FILE* fp, pid_t pid ) {
 	ret = waitid( P_PID, ( id_t ) pid, &info, WEXITED );
 
 	if ( ret != -1 ) {
-		debug( LOG_DEBUG, "child pid: %d exited with status: %d", pid, info.si_status );
+		debug( "child pid: %d exited with status: %d", pid, info.si_status );
 		switch ( info.si_code ) {
 			case CLD_EXITED:
 				if ( info.si_status != 0 ) {
