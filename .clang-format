@@ -15,7 +15,7 @@ SpacesInAngles: true
 SpacesInContainerLiterals: true
 SpacesInCStyleCastParentheses: true
 SpacesInParentheses: true
-SpacesInSquareBrackets: true
+SpacesInSquareBrackets: false
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterClass:      true
@@ -24,7 +24,7 @@ BraceWrapping:
   AfterFunction:   false
   AfterNamespace:  true
   AfterObjCDeclaration: true
-  AfterStruct:     true
+  AfterStruct:     false
   AfterUnion:      false
   BeforeCatch:     true
   BeforeElse:      true
