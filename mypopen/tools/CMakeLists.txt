@@ -1,0 +1,4 @@
+# 目录下所有的源代码文件并将列表存储在TOOLS_SRCS中
+AUX_SOURCE_DIRECTORY(. TOOLS_SRCS)
+set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/libs)
+add_library(tools ${TOOLS_SRCS})

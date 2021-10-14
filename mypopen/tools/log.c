@@ -2,14 +2,17 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:15:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-12 15:07:38
+ * @Last Modified time: 2021-10-14 16:35:41
  */
 
-#include "log.h"
-
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "compiler.h"
+#include "clocks.h"
+#include "log.h"
 
 #define LOG_DATE_LENGTH 26
 
@@ -33,6 +36,13 @@ static const __log_name_level_t log_name_levels[] = {
 	{ FLEVEL, LOG_FATAL },
 };
 
+static enum log_level __log_level  = LOG_DEBUG;
+static pthread_mutex_t __log_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static inline void __log_lock( void ) { pthread_mutex_lock( &__log_mutex ); }
+
+static inline void __log_unlock( void ) { pthread_mutex_unlock( &__log_mutex ); }
+
 static inline const char* get_name_by_log_level( int level ) {
 	int i;
 	for ( i = 0; i < sizeof( log_name_levels ) / sizeof( __log_name_level_t ); i++ ) {
@@ -42,16 +52,6 @@ static inline const char* get_name_by_log_level( int level ) {
 	}
 	return ULEVEL;
 }
-
-static inline time_t now_sec( clockid_t clk_id ) {
-	struct timespec ts;
-	if ( unlikely( clock_gettime( clk_id, &ts ) == -1 ) ) {
-		return 0;
-	}
-	return ts.tv_sec;
-}
-
-inline time_t now_realtime_sec( void ) { return now_sec( CLOCK_REALTIME ); }
 
 static inline void log_date( char* buffer, size_t len ) {
 	if ( unlikely( !buffer || !len ) )
@@ -81,9 +81,14 @@ void log_print(
 	const char* level_name = NULL;
 	char date[LOG_DATE_LENGTH];
 
+	if ( unlikely( level < __log_level ) )
+		return;
+
 	log_date( date, LOG_DATE_LENGTH );
 
 	level_name = get_name_by_log_level( level );
+
+	__log_lock();
 
 	va_start( args, fmt );
 	printf( "%s: %s %-5s %s:%d@%s: ", date, "myopen", level_name, file, line, function );
@@ -92,4 +97,8 @@ void log_print(
 	putchar( '\n' );
 
 	fflush( stdout );
+
+	__log_unlock();
 }
+
+void log_set_level( enum log_level level ) { __log_level = level; }

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-12 14:45:33
+ * @Last Modified time: 2021-10-14 16:56:06
  */
 
 #include <errno.h>
@@ -13,12 +13,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "log.h"
-#include "popen.h"
+#include "config.h"
+#include "tools/compiler.h"
+#include "tools/log.h"
+#include "tools/popen.h"
 
 #define BUF_SIZE 1024
 
-const char* const __cmd = "../timer.sh";
+//const char* const __cmd = "../timer.sh";
 
 // killpid kills pid with SIGTERM.
 int killpid( pid_t pid ) {
@@ -48,15 +50,22 @@ int32_t main( int32_t argc, char* argv[] ) {
 	char buf[BUF_SIZE];
 	pid_t child_pid = 0;
 
+	if ( argc < 2 ) {
+		fprintf( stdout, "%s Version %d.%d\n", argv[0], Mypopen_VERSION_MAJOR, Mypopen_VERSION_MINOR );
+		fprintf( stdout, "Uage: %s number\n", argv[0] );
+		return 1;
+	}
+
 	info( "---start mypopen running pid: %d---", getpid() );
 
-	FILE* child_fp = mypopen( __cmd, &child_pid );
+	const char * cmd = argv[1];
+	FILE* child_fp = mypopen( cmd, &child_pid );
 	if ( unlikely( !child_fp ) ) {
-		error( "Cannot popen(\"%s\", \"r\").", __cmd );
+		error( "Cannot popen(\"%s\", \"r\").", cmd );
 		return 0;
 	}
 
-	debug( "connected to '%s' running on pid %d", __cmd, child_pid );
+	debug( "connected to '%s' running on pid %d", cmd, child_pid );
 
 	while ( 1 ) {
 		if ( fgets( buf, BUF_SIZE, child_fp ) == NULL ) {
@@ -75,7 +84,7 @@ int32_t main( int32_t argc, char* argv[] ) {
 		info( "buf: %s", buf );
 	}
 
-	info( "'%s' (pid %d) disconnected.", __cmd, child_pid );
+	info( "'%s' (pid %d) disconnected.", cmd, child_pid );
 
 	killpid( child_pid );
 
@@ -85,7 +94,7 @@ int32_t main( int32_t argc, char* argv[] ) {
 	}
 	else {
 		error( "child worker exit abnormally." );
-	}
+	} 
 
 	return 0;
 }

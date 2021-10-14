@@ -2,14 +2,9 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:15:44
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-12 15:08:39
+ * @Last Modified time: 2021-10-14 16:34:50
  */
 #pragma once
-
-#include <time.h>
-
-#define unlikely( x ) __builtin_expect( !!( x ), 0 )
-#define likely( x ) __builtin_expect( !!( x ), 1 )
 
 #ifdef HAVE_FUNC_ATTRIBUTE_FORMAT
 #	define PRINTFLIKE( f, a ) __attribute__( ( format( __printf__, f, a ) ) )
@@ -39,4 +34,5 @@ enum log_level
 extern void log_print(
     enum log_level level, const char* file, const char* function, const unsigned long line, const char* fmt, ... )
     PRINTFLIKE( 4, 5 );
-extern time_t now_realtime_sec( void );
+extern void log_set_level( enum log_level level );	
+

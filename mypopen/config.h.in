@@ -1,0 +1,2 @@
+#define Mypopen_VERSION_MAJOR @Mypopen_VERSION_MAJOR@
+#define Mypopen_VERSION_MINOR @Mypopen_VERSION_MINOR@

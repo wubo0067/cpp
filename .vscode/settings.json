@@ -1,5 +1,11 @@
 {
     "files.associations": {
-        "error.h": "c"
-    }
+        "error.h": "c",
+        "*.in": "cpp",
+        "variant": "c",
+        "unistd.h": "c",
+        "spawn.h": "c",
+        "signal.h": "c"
+    },
+    "cmake.sourceDirectory": "${workspaceFolder}/mypopen"
 }
