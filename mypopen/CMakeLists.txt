@@ -8,8 +8,8 @@ set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # debug 、 release版本
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g -ggdb3")
-SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+SET(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
+SET(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 版本号.
 set (Mypopen_VERSION_MAJOR 1)

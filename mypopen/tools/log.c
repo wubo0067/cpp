@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:15:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-14 16:35:41
+ * @Last Modified time: 2021-10-14 17:12:06
  */
 
 #include <pthread.h>
@@ -91,7 +91,7 @@ void log_print(
 	__log_lock();
 
 	va_start( args, fmt );
-	printf( "%s: %s %-5s %s:%d@%s: ", date, "myopen", level_name, file, line, function );
+	printf( "%s: %s %-5s %s:%lu@%s: ", date, "myopen", level_name, file, line, function );
 	vprintf( fmt, args );
 	va_end( args );
 	putchar( '\n' );
