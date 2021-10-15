@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.18)
-project (mypopen) 
+project (x-monitor) 
 
 set(CMAKE_C_COMPILER "/usr/bin/gcc")
 set(CMAKE_CXX_COMPILER "/usr/bin/g++")
@@ -42,8 +42,8 @@ set(PLUGINSD_PLUGIN_FILES
         plugins.d/plugins_d.h
         )
 
-add_executable (mypopen main.c
+add_executable (x-monitor main.c
                         ${PLUGINSD_PLUGIN_FILES}
                         )
                         
-target_link_libraries (mypopen tools)
+target_link_libraries (x-monitor tools)
