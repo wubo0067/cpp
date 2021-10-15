@@ -5,7 +5,12 @@
         "variant": "c",
         "unistd.h": "c",
         "spawn.h": "c",
-        "signal.h": "c"
+        "signal.h": "c",
+        "clocks.h": "c",
+        "popen.h": "c",
+        "common.h": "c",
+        "syslog.h": "c",
+        "log.h": "c"
     },
     "cmake.sourceDirectory": "${workspaceFolder}/mypopen"
 }

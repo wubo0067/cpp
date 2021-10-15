@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:15:44
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-14 16:34:50
+ * @Last Modified time: 2021-10-15 14:52:48
  */
 #pragma once
 
@@ -17,22 +17,21 @@
 
 enum log_level
 {
-	LOG_DEBUG = 0,
-	LOG_INFO,
-	LOG_WARN,
-	LOG_ERROR,
-	LOG_FATAL,
+	LOG_LEVEL_FATAL = 0,
+	LOG_LEVEL_ERROR,
+	LOG_LEVEL_WARN,
+	LOG_LEVEL_INFO,
+	LOG_LEVEL_DEBUG,
 	LOG_LEVEL_MAX
 };
 
-#define debug( args... ) log_print( LOG_DEBUG, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define info( args... ) log_print( LOG_INFO, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define warn( args... ) log_print( LOG_WARN, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define error( args... ) log_print( LOG_ERROR, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define fatal( args... ) log_print( LOG_FATAL, __FILE__, __FUNCTION__, __LINE__, ##args )
+#define debug( args... ) log_print( LOG_LEVEL_DEBUG, __FILE__, __FUNCTION__, __LINE__, ##args )
+#define info( args... ) log_print( LOG_LEVEL_INFO, __FILE__, __FUNCTION__, __LINE__, ##args )
+#define warn( args... ) log_print( LOG_LEVEL_WARN, __FILE__, __FUNCTION__, __LINE__, ##args )
+#define error( args... ) log_print( LOG_LEVEL_ERROR, __FILE__, __FUNCTION__, __LINE__, ##args )
+#define fatal( args... ) log_print( LOG_LEVEL_FATAL, __FILE__, __FUNCTION__, __LINE__, ##args )
 
 extern void log_print(
     enum log_level level, const char* file, const char* function, const unsigned long line, const char* fmt, ... )
     PRINTFLIKE( 4, 5 );
-extern void log_set_level( enum log_level level );	
-
+extern void log_set_level( enum log_level level );

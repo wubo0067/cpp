@@ -2,22 +2,12 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 12:01:21
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-14 16:37:38
+ * @Last Modified time: 2021-10-15 10:55:07
  */
 
-#include <errno.h>
-#include <error.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <spawn.h>
-#include <stdint.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
+#include "popen.h"
 #include "compiler.h"
 #include "log.h"
-#include "popen.h"
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1

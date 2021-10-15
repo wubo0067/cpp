@@ -2,13 +2,12 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:42:23
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-12 14:07:05
+ * @Last Modified time: 2021-10-15 11:05:26
  */
 
 #pragma once
 
-#include <stdio.h>
-#include <sys/types.h>
+#include "common.h"
 
 // fork-exec
 extern FILE* mypopen( const char* command, volatile pid_t* pidptr );

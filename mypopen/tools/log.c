@@ -2,41 +2,37 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:15:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-14 17:12:06
+ * @Last Modified time: 2021-10-15 11:20:07
  */
 
-#include <pthread.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <string.h>
 
+#include "log.h"
 #include "compiler.h"
 #include "clocks.h"
-#include "log.h"
 
 #define LOG_DATE_LENGTH 26
 
-#define DLEVEL "DEBUG"
-#define ILEVEL "INFO"
-#define WLEVEL "WARN"
-#define ELEVEL "ERROR"
-#define FLEVEL "FATAL"
-#define ULEVEL "UNKNOWN"
+#define DLEVEL_STR "DEBUG"
+#define ILEVEL_STR "INFO"
+#define WLEVEL_STR "WARN"
+#define ELEVEL_STR "ERROR"
+#define FLEVEL_STR "FATAL"
+#define ULEVEL_STR "UNKNOWN"
 
 typedef struct {
 	const char* const name;
-	int level;
+	enum log_level level;
 } __log_name_level_t;
 
 static const __log_name_level_t log_name_levels[] = {
-	{ DLEVEL, LOG_DEBUG },
-	{ ILEVEL, LOG_INFO },
-	{ WLEVEL, LOG_WARN },
-	{ ELEVEL, LOG_ERROR },
-	{ FLEVEL, LOG_FATAL },
+	{ DLEVEL_STR, LOG_LEVEL_DEBUG },
+	{ ILEVEL_STR, LOG_LEVEL_INFO },
+	{ WLEVEL_STR, LOG_LEVEL_WARN },
+	{ ELEVEL_STR, LOG_LEVEL_ERROR },
+	{ FLEVEL_STR, LOG_LEVEL_FATAL },
 };
 
-static enum log_level __log_level  = LOG_DEBUG;
+static enum log_level __log_level  = LOG_LEVEL_DEBUG;
 static pthread_mutex_t __log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline void __log_lock( void ) { pthread_mutex_lock( &__log_mutex ); }
@@ -50,7 +46,7 @@ static inline const char* get_name_by_log_level( int level ) {
 			return log_name_levels[i].name;
 		}
 	}
-	return ULEVEL;
+	return ULEVEL_STR;
 }
 
 static inline void log_date( char* buffer, size_t len ) {
@@ -81,7 +77,7 @@ void log_print(
 	const char* level_name = NULL;
 	char date[LOG_DATE_LENGTH];
 
-	if ( unlikely( level < __log_level ) )
+	if ( unlikely( level > __log_level ) )
 		return;
 
 	log_date( date, LOG_DATE_LENGTH );

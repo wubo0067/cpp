@@ -8,8 +8,14 @@ set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 # debug 、 release版本
-SET(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
-SET(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
+set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
+
+# 设置c编译参数
+set(CMAKE_C_FLAGS "-fPIC")
+
+# 设置c标准 cmake3.18只支持c11
+set(CMAKE_C_STANDARD 11)
 
 # 版本号.
 set (Mypopen_VERSION_MAJOR 1)
@@ -23,20 +29,21 @@ configure_file (
 
 # include path加上build目录 
 #include_directories("${PROJECT_BINARY_DIR}")
-#include_directories("${PROJECT_SOURCE_DIR}/tools")
+include_directories("${PROJECT_SOURCE_DIR}")
 
 add_subdirectory(tools)
 
 # 项目的顶层目录
 SET(CMAKE_SOURCE_DIR .)
 
-set(MYPOPEN_FILES
-        main.c
-        log.c
-        log.h
-        popen.c
-        popen.h
+
+set(PLUGINSD_PLUGIN_FILES
+        plugins.d/plugins_d.c
+        plugins.d/plugins_d.h
         )
 
-add_executable (mypopen main.c)
+add_executable (mypopen main.c
+                        ${PLUGINSD_PLUGIN_FILES}
+                        )
+                        
 target_link_libraries (mypopen tools)

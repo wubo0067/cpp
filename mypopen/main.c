@@ -2,21 +2,16 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-14 16:56:06
+ * @Last Modified time: 2021-10-15 11:03:14
  */
 
-#include <errno.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
-
 #include "config.h"
+#include "tools/common.h"
 #include "tools/compiler.h"
 #include "tools/log.h"
 #include "tools/popen.h"
+
+#include "plugins.d/plugins_d.h"
 
 #define BUF_SIZE 1024
 
@@ -57,6 +52,8 @@ int32_t main( int32_t argc, char* argv[] ) {
 	}
 
 	info( "---start mypopen running pid: %d---", getpid() );
+
+	pluginsd_main(NULL);
 
 	const char * cmd = argv[1];
 	FILE* child_fp = mypopen( cmd, &child_pid );
