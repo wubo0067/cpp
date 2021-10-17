@@ -7,8 +7,8 @@
 
 #include "daemon.h"
 #include "compiler.h"
-#include "log.h"
 #include "files.h"
+#include "log.h"
 
 char pid_file[FILENAME_MAX + 1] = { 0 };
 
@@ -47,8 +47,74 @@ static inline void set_process_nice_level() {
 		error( "Cannot set CPU nice level to %d.", process_nice_level );
 	}
 	else {
-		debug( "Set nice level to %d.", process_nice_level );
+		debug( "Set process nice level to %d.", process_nice_level );
 	}
+}
+
+static void chown_open_file( int32_t fd, uid_t uid, gid_t gid ) {
+	if ( unlikely( fd == -1 ) ) {
+		return;
+	}
+
+	struct stat st;
+	if ( unlikely( fstat( fd, &st ) == -1 ) ) {
+		error( "fstat failed, fd: %d, errno: %d", fd, errno );
+		return;
+	}
+
+	if ( ( st.st_uid != uid || st.st_gid != gid ) && S_ISREG( st.st_mode ) ) {
+		if ( unlikely( fchown( fd, uid, gid ) == -1 ) ) {
+			error( "fchown failed, fd: %d, errno: %d", fd, errno );
+		}
+	}
+	return;
+}
+
+int32_t become_user( const char* user, int32_t pid_fd ) {
+	// 获取ruid
+	int32_t is_root = ( ( getuid() == 0 ) ? 1 : 0 );
+	
+
+	struct passwd* pw = getpwnam( user );
+	if ( unlikely( !pw ) ) {
+		error( "getpwnam failed, user: %s", user );
+		return -1;
+	}
+
+	// 得到用户的ruid和rgid
+	uid_t ruid = pw->pw_uid;
+	gid_t rgid = pw->pw_gid;
+
+	if ( pid_file[0] != '\0' ) {
+		// 修改pid文件的所有者
+		if ( chown( pid_file, ruid, rgid ) < 0 ) {
+			error( "chown pid_file: %s to %u:%u failed.", pid_file, ( uint32_t ) ruid, ( uint32_t ) rgid );
+		}
+	}
+
+	chown_open_file( pid_fd, ruid, rgid );
+
+	if ( setuid( ruid ) < 0 ) {
+		error( "setuid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
+		return -1;
+	}
+
+	if ( seteuid( ruid ) < 0 ) {
+		error( "seteuid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
+		return -1;
+	}
+
+	if ( setgid( rgid ) < 0 ) {
+		error( "setgid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
+		return -1;
+	}
+
+	if ( setegid( rgid ) < 0 ) {
+		error( "setegid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
+		return -1;
+	}
+
+	return 0;
 }
 
 int32_t mk_daemon( int32_t dont_fork, const char* user ) {
@@ -109,12 +175,17 @@ int32_t mk_daemon( int32_t dont_fork, const char* user ) {
 	set_process_nice_level();
 
 	if ( user && *user ) {
-		struct passwd* pw = getpwnam( user );
-
-		if ( pidfd != -1 ) {
-			close( pidfd );
+		if ( become_user( user, pidfd ) != 0 ) {
+			error( "Cannot become user '%s'.", user );
+			exit( 0 - errno );
+		}
+		else {
+			info( "Become user '%s' success.", user );
 		}
 	}
 
+	if ( pidfd != -1 ) {
+		close( pidfd );
+	}
 	return 0;
 }

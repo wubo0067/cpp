@@ -6,3 +6,6 @@
  */
 
 #pragma once
+
+extern void signals_init(void);
+extern void signals_handle(void);
