@@ -39,15 +39,15 @@ static __signals_waiting_t signal_waiting_list[] = {
 static void signal_handler( int signo ) {
 	// find the entry in the list
 	int i;
-	for ( i = 0; i < sizeof( signal_waiting_list ) / sizeof( __signals_waiting_t ); i++ ) {
+	for ( i = 0; i < ARRAY_SIZE( signal_waiting_list ); i++ ) {
 		if ( unlikely( signal_waiting_list[i].signo == signo ) ) {
 			// 信号接收计数
 			signal_waiting_list[i].receive_count++;
 
 			if ( signal_waiting_list[i].action == E_SIGNAL_FATAL ) {
 				char buffer[200 + 1];
-				snprintf(
-				    buffer, 200, "\nSIGNAL HANDLER: received: %s. Oops! This is bad!\n", signal_waiting_list[i].signame );
+				snprintf( buffer, 200, "\nSIGNAL HANDLER: received: %s. Oops! This is bad!\n",
+				    signal_waiting_list[i].signame );
 				write( STDERR_FILENO, buffer, strlen( buffer ) );
 			}
 			return;
@@ -62,7 +62,7 @@ void signals_init( void ) {
 	sigfillset( &sa.sa_mask ); // 调用信号处理函数时，要屏蔽所有的信号。
 
 	int32_t i = 0;
-	for ( i = 0; i < sizeof( signal_waiting_list ) / sizeof( __signals_waiting_t ); i++ ) {
+	for ( i = 0; i < ARRAY_SIZE( signal_waiting_list ); i++ ) {
 		switch ( signal_waiting_list[i].action ) {
 			case E_SIGNAL_IGNORE:
 				sa.sa_handler = SIG_IGN;
@@ -85,8 +85,41 @@ void signals_handle( void ) {
 			int32_t found = 1;
 
 			while ( found ) {
-				found = 0;
+				found     = 0;
+				int32_t i = 0;
+
+				for ( i = 0; i < ARRAY_SIZE( signal_waiting_list ); i++ ) {
+					if ( signal_waiting_list[i].receive_count > 0 ) {
+						found                                = 1;
+						signal_waiting_list[i].receive_count = 0;
+						const char* signal_name              = signal_waiting_list[i].signame;
+
+						switch ( signal_waiting_list[i].action ) {
+							case E_SIGNAL_EXIT_CLEANLY:
+								info( "Received signal %s. Exiting cleanly.", signal_name );
+								exit( 0 );
+								break;
+							case E_SIGNAL_SAVE_DATABASE:
+								info( "Received signal %s. Saving the database.", signal_name );
+								break;
+							case E_SIGNAL_REOPEN_LOGS:
+								info( "Received signal %s. Reopening the log files.", signal_name );
+								break;
+							case E_SIGNAL_FATAL:
+								info( "Received signal %s. Exiting with error.", signal_name );
+								exit( 1 );
+								break;
+							default:
+								info( "Received signal %s. No signal handler configured, Ignoring it.", signal_name );
+								break;
+						}
+					}
+				}
 			}
+		}
+		else {
+			error( "pause() returned but it was not interupted by a signal. errno: %d", errno );
+			break;
 		}
 	}
 }
