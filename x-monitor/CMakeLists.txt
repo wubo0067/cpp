@@ -12,14 +12,17 @@ set(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
 
 # 设置c编译参数
-set(CMAKE_C_FLAGS "-fPIC")
+set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra")
 
 # 设置c标准 cmake3.18只支持c11
 set(CMAKE_C_STANDARD 11)
 
 # 版本号.
-set (Mypopen_VERSION_MAJOR 1)
-set (Mypopen_VERSION_MINOR 0)
+set (XMonitor_VERSION_MAJOR 1)
+set (XMonitor_VERSION_MINOR 0)
+
+# 依赖项
+set(EXTRA_DIR "${PROJECT_SOURCE_DIR}/extra")
  
 # 配置一个头文件来传递一些CMake设置到源代码
 configure_file (
@@ -27,23 +30,33 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/config.h"
   )
 
-# include path加上build目录 
-#include_directories("${PROJECT_BINARY_DIR}")
-include_directories("${PROJECT_SOURCE_DIR}")
+# 头文件include目录
+include_directories("${PROJECT_SOURCE_DIR}" "${EXTRA_DIR}/include")
 
+# 第三方静态库链接路径
+link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
+
+# 第三方库
+set(EXTRA_LIBS "libjson-c.a")
+
+# 项目子目录
 add_subdirectory(tools)
 
-# 项目的顶层目录
-SET(CMAKE_SOURCE_DIR .)
-
-
-set(PLUGINSD_PLUGIN_FILES
+# 子目录源代码
+set(PLUGINSD_FILES
         plugins.d/plugins_d.c
         plugins.d/plugins_d.h
         )
 
-add_executable (x-monitor main.c
-                        ${PLUGINSD_PLUGIN_FILES}
+set(CONFIG_FILES
+        config/config.h
+        config/config.c
+        )
+
+# 编译的执行程序
+add_executable(x-monitor main.c
+                        ${PLUGINSD_FILES}
+                        ${CONFIG_FILES}
                         )
                         
-target_link_libraries (x-monitor tools)
+target_link_libraries(x-monitor tools ${EXTRA_LIBS} pthread z m)

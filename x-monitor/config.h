@@ -1,2 +1,2 @@
-#define Mypopen_VERSION_MAJOR 1
-#define Mypopen_VERSION_MINOR 0
+#define XMonitor_VERSION_MAJOR 1
+#define XMonitor_VERSION_MINOR 0

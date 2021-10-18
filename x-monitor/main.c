@@ -46,7 +46,7 @@ int32_t main( int32_t argc, char* argv[] ) {
 	pid_t child_pid = 0;
 
 	if ( argc < 2 ) {
-		fprintf( stdout, "%s Version %d.%d\n", argv[0], Mypopen_VERSION_MAJOR, Mypopen_VERSION_MINOR );
+		fprintf( stdout, "%s Version %d.%d\n", argv[0], XMonitor_VERSION_MAJOR, XMonitor_VERSION_MINOR );
 		fprintf( stdout, "Uage: %s number\n", argv[0] );
 		return 1;
 	}
