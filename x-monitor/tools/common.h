@@ -49,6 +49,7 @@ extern "C" {
 #include <spawn.h>
 #include <uv.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 }

@@ -36,10 +36,10 @@ static __signals_waiting_t signal_waiting_list[] = {
 	//{ SIGUSR2, "SIGUSR2", 0, NETDATA_SIGNAL_RELOAD_HEALTH },
 };
 
-static void signal_handler( int signo ) {
+static void signal_handler( int32_t signo ) {
 	// find the entry in the list
-	int i;
-	for ( i = 0; i < ARRAY_SIZE( signal_waiting_list ); i++ ) {
+	int32_t i;
+	for ( i = 0; i < (int32_t)ARRAY_SIZE( signal_waiting_list ); i++ ) {
 		if ( unlikely( signal_waiting_list[i].signo == signo ) ) {
 			// 信号接收计数
 			signal_waiting_list[i].receive_count++;
@@ -62,7 +62,7 @@ void signals_init( void ) {
 	sigfillset( &sa.sa_mask ); // 调用信号处理函数时，要屏蔽所有的信号。
 
 	int32_t i = 0;
-	for ( i = 0; i < ARRAY_SIZE( signal_waiting_list ); i++ ) {
+	for ( i = 0; i < (int32_t)ARRAY_SIZE( signal_waiting_list ); i++ ) {
 		switch ( signal_waiting_list[i].action ) {
 			case E_SIGNAL_IGNORE:
 				sa.sa_handler = SIG_IGN;
@@ -88,7 +88,7 @@ void signals_handle( void ) {
 				found     = 0;
 				int32_t i = 0;
 
-				for ( i = 0; i < ARRAY_SIZE( signal_waiting_list ); i++ ) {
+				for ( i = 0; i < (int32_t)ARRAY_SIZE( signal_waiting_list ); i++ ) {
 					if ( signal_waiting_list[i].receive_count > 0 ) {
 						found                                = 1;
 						signal_waiting_list[i].receive_count = 0;

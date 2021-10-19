@@ -11,7 +11,10 @@
         "common.h": "c",
         "syslog.h": "c",
         "log.h": "c",
-        "compiler.h": "c"
+        "compiler.h": "c",
+        "config.h": "c",
+        "app_config.h": "c",
+        "appconfig.h": "c"
     },
     "cmake.sourceDirectory": "${workspaceFolder}/mypopen"
 }

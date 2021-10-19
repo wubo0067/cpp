@@ -5,10 +5,9 @@
  * @Last Modified time: 2021-10-15 11:20:07
  */
 
-
 #include "log.h"
-#include "compiler.h"
 #include "clocks.h"
+#include "compiler.h"
 
 #define LOG_DATE_LENGTH 26
 
@@ -39,9 +38,9 @@ static inline void __log_lock( void ) { pthread_mutex_lock( &__log_mutex ); }
 
 static inline void __log_unlock( void ) { pthread_mutex_unlock( &__log_mutex ); }
 
-static inline const char* get_name_by_log_level( int level ) {
-	int i;
-	for ( i = 0; i < sizeof( log_name_levels ) / sizeof( __log_name_level_t ); i++ ) {
+static inline const char* get_name_by_log_level( enum log_level level ) {
+	int32_t i;
+	for ( i = 0; i < ( int32_t ) ARRAY_SIZE( log_name_levels ); i++ ) {
 		if ( log_name_levels[i].level == level ) {
 			return log_name_levels[i].name;
 		}
@@ -87,7 +86,7 @@ void log_print(
 	__log_lock();
 
 	va_start( args, fmt );
-	printf( "%s: %s %-5s %s:%lu@%s: ", date, "myopen", level_name, file, line, function );
+	printf( "%s: %s %-5s %s:%lu@%s: ", date, "x-monitor", level_name, file, line, function );
 	vprintf( fmt, args );
 	va_end( args );
 	putchar( '\n' );

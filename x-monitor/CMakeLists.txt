@@ -37,7 +37,13 @@ include_directories("${PROJECT_SOURCE_DIR}" "${EXTRA_DIR}/include")
 link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
 
 # 第三方库
-set(EXTRA_LIBS "libjson-c.a")
+set(EXTRA_LIBS "libjson-c.a" "libconfig.a")
+
+# 自定义宏
+add_definitions(
+        -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg"
+        -DLOG_DIR="/usr/log/x-monitor"
+)
 
 # 项目子目录
 add_subdirectory(tools)
@@ -48,15 +54,15 @@ set(PLUGINSD_FILES
         plugins.d/plugins_d.h
         )
 
-set(CONFIG_FILES
-        config/config.h
-        config/config.c
+set(APPCONFIG_FILES
+        appconfig/appconfig.h
+        appconfig/appconfig.c
         )
 
 # 编译的执行程序
 add_executable(x-monitor main.c
                         ${PLUGINSD_FILES}
-                        ${CONFIG_FILES}
+                        ${APPCONFIG_FILES}
                         )
                         
 target_link_libraries(x-monitor tools ${EXTRA_LIBS} pthread z m)
