@@ -37,7 +37,7 @@ include_directories("${PROJECT_SOURCE_DIR}" "${EXTRA_DIR}/include")
 link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
 
 # 第三方库
-set(EXTRA_LIBS "libjson-c.a" "libconfig.a")
+set(EXTRA_LIBS "libjson-c.a" "libconfig.a" "libzlog.a")
 
 # 自定义宏
 add_definitions(

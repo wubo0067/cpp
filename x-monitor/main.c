@@ -215,5 +215,7 @@ int32_t main( int32_t argc, char* argv[] ) {
 		error( "child worker exit abnormally." );
 	}
 
+	appconfig_destroy();
+
 	return 0;
 }
