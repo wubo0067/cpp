@@ -38,7 +38,7 @@ int32_t appconfig_load( const char* config_file ) {
 
 	// 加载配置数据
 	if ( config_read_file( &__appconfig.cfg, config_file ) != CONFIG_TRUE ) {
-		error( "config_read_file failed: %s:%d - %s", config_error_file( &__appconfig.cfg ),
+		fprintf(stderr,  "config_read_file failed: %s:%d - %s", config_error_file( &__appconfig.cfg ),
 		    config_error_line( &__appconfig.cfg ), config_error_text( &__appconfig.cfg ) );
 		config_destroy( &__appconfig.cfg );
 		ret = -1;

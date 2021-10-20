@@ -33,12 +33,12 @@ static void oom_score_adj( void ) {
 
 	ret = write_int64_to_file( "/proc/self/oom_score_adj", process_oom_score );
 	if ( unlikely( ret < 0 ) ) {
-		error( "failed to adjust Out-Of-Memory (OOM) score to %d. run with %d, ret: %d", process_oom_score,
+		error( "failed to adjust Out-Of-Memory (OOM) score to %d. run with %ld, ret: %d", process_oom_score,
 		    old_oom_score, ret );
 		return;
 	}
 
-	info( "adjust Out-Of-Memory (OOM) score from %d to %d.", old_oom_score, process_oom_score );
+	info( "adjust Out-Of-Memory (OOM) score from %ld to %d.", old_oom_score, process_oom_score );
 	return;
 }
 

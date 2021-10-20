@@ -6,6 +6,10 @@
  */
 #pragma once
 
+#include <stdint.h>
+
+#include "zlog/zlog.h"
+
 #ifdef HAVE_FUNC_ATTRIBUTE_FORMAT
 #	define PRINTFLIKE( f, a ) __attribute__( ( format( __printf__, f, a ) ) )
 #else
@@ -15,23 +19,13 @@
 // const char * 是限制指针内容，*后面的const是限定变量的，这样才能赋予内部链接属性
 // extern const联合修饰时，extern会压制const内部链接属性
 
-enum log_level
-{
-	LOG_LEVEL_FATAL = 0,
-	LOG_LEVEL_ERROR,
-	LOG_LEVEL_WARN,
-	LOG_LEVEL_INFO,
-	LOG_LEVEL_DEBUG,
-	LOG_LEVEL_MAX
-};
+extern zlog_category_t* g_log_cat;
 
-#define debug( args... ) log_print( LOG_LEVEL_DEBUG, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define info( args... ) log_print( LOG_LEVEL_INFO, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define warn( args... ) log_print( LOG_LEVEL_WARN, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define error( args... ) log_print( LOG_LEVEL_ERROR, __FILE__, __FUNCTION__, __LINE__, ##args )
-#define fatal( args... ) log_print( LOG_LEVEL_FATAL, __FILE__, __FUNCTION__, __LINE__, ##args )
+#define debug( args... ) zlog_debug( g_log_cat, ##args )
+#define info( args... ) zlog_info( g_log_cat, ##args )
+#define warn( args... ) zlog_warn( g_log_cat, ##args )
+#define error( args... ) zlog_error( g_log_cat, ##args )
+#define fatal( args... ) zlog_fatalf( g_log_cat, ##args )
 
-extern void log_print(
-    enum log_level level, const char* file, const char* function, const unsigned long line, const char* fmt, ... )
-    PRINTFLIKE( 4, 5 );
-extern void log_set_level( enum log_level level );
+extern int32_t log_init( const char* log_config_file );
+extern void log_fini();

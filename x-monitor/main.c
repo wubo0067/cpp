@@ -122,7 +122,7 @@ int32_t main( int32_t argc, char* argv[] ) {
 	char buf[BUF_SIZE];
 	pid_t child_pid   = 0;
 	int32_t dont_fork = 0;
-
+	int32_t config_loaded = 0;
 
 	// parse options
 	{
@@ -149,8 +149,14 @@ int32_t main( int32_t argc, char* argv[] ) {
 			switch ( opt ) {
 				case 'c':
 					if ( appconfig_load( optarg ) < 0 ) {
-						error( "Failed to load config file %s\n", optarg );
-						return 1;
+						return -1;
+					} else {
+						// 初始化log
+						const char * log_config_file = appconfig_get_str("application.log_config_file");
+						if(log_init(log_config_file) < 0) {
+							return -1;
+						}
+						config_loaded = 1;
 					}
 					break;
 				case 'D':
@@ -166,6 +172,10 @@ int32_t main( int32_t argc, char* argv[] ) {
 					return 0;
 			}
 		}
+	}
+
+	if(!config_loaded) {
+		help();
 	}
 
 	info( "---start mypopen running pid: %d---", getpid() );
@@ -200,7 +210,8 @@ int32_t main( int32_t argc, char* argv[] ) {
 				info( "fgets() return unknown." );
 			}
 		}
-		info( "buf: %s", buf );
+		buf[strlen(buf) - 1] = '\0';
+		info( "recv: [%s]", buf );
 	}
 
 	info( "'%s' (pid %d) disconnected.", cmd, child_pid );
@@ -216,6 +227,7 @@ int32_t main( int32_t argc, char* argv[] ) {
 	}
 
 	appconfig_destroy();
+	log_fini();
 
 	return 0;
 }
