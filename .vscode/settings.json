@@ -14,7 +14,8 @@
         "compiler.h": "c",
         "config.h": "c",
         "app_config.h": "c",
-        "appconfig.h": "c"
+        "appconfig.h": "c",
+        "plugins_d.h": "c"
     },
     "cmake.sourceDirectory": "${workspaceFolder}/mypopen"
 }

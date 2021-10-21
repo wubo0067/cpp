@@ -11,6 +11,7 @@
 #include "tools/compiler.h"
 #include "tools/log.h"
 #include "tools/popen.h"
+#include "tools/daemon.h"
 
 #include "plugins.d/plugins_d.h"
 
@@ -177,6 +178,8 @@ int32_t main( int32_t argc, char* argv[] ) {
 	if(!config_loaded) {
 		help();
 	}
+
+	mk_daemon(0, NULL);
 
 	info( "---start mypopen running pid: %d---", getpid() );
 
