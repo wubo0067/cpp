@@ -2,16 +2,17 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-15 11:03:14
+ * @Last Modified time: 2021-10-21 11:43:43
  */
 
 #include "config.h"
 
-#include "tools/common.h"
-#include "tools/compiler.h"
-#include "tools/log.h"
-#include "tools/popen.h"
-#include "tools/daemon.h"
+#include "utils/common.h"
+#include "utils/compiler.h"
+#include "utils/daemon.h"
+#include "utils/log.h"
+#include "utils/popen.h"
+#include "utils/signals.h"
 
 #include "plugins.d/plugins_d.h"
 
@@ -112,18 +113,25 @@ void help() {
 		else {
 			fprintf( stderr, "\n" );
 		}
-		//fprintf( stderr, "\n" );
+		// fprintf( stderr, "\n" );
 	}
 
 	fflush( stderr );
 	return;
 }
 
+static void main_cleanup_and_exit( int32_t UNUSED( signo ) ) {
+	// free config
+	appconfig_destroy();
+	// free log
+	log_fini();
+}
+
 int32_t main( int32_t argc, char* argv[] ) {
-	char buf[BUF_SIZE];
-	pid_t child_pid   = 0;
-	int32_t dont_fork = 0;
-	int32_t config_loaded = 0;
+	char UNUSED( buf[BUF_SIZE] ) = { 0 };
+	pid_t UNUSED( child_pid )    = 0;
+	int32_t dont_fork			 = 0;
+	int32_t config_loaded        = 0;
 
 	// parse options
 	{
@@ -151,10 +159,11 @@ int32_t main( int32_t argc, char* argv[] ) {
 				case 'c':
 					if ( appconfig_load( optarg ) < 0 ) {
 						return -1;
-					} else {
+					}
+					else {
 						// 初始化log
-						const char * log_config_file = appconfig_get_str("application.log_config_file");
-						if(log_init(log_config_file) < 0) {
+						const char* log_config_file = appconfig_get_str( "application.log_config_file" );
+						if ( log_init( log_config_file ) < 0 ) {
 							return -1;
 						}
 						config_loaded = 1;
@@ -175,62 +184,70 @@ int32_t main( int32_t argc, char* argv[] ) {
 		}
 	}
 
-	if(!config_loaded) {
+	if ( !config_loaded ) {
 		help();
 	}
 
-	mk_daemon(0, NULL);
+	// 信号初始化
+	signals_block();
+	signals_init();
+
+	// 编程守护进程
+	become_daemon( dont_fork, NULL );
 
 	info( "---start mypopen running pid: %d---", getpid() );
 
+	// 初始化插件管理
 	pluginsd_main( NULL );
 
-	const char* cmd = appconfig_get_str( "plugins.timer_shell" );
-	if ( cmd == NULL ) {
-		error( "plugins.timer_shell is not set." );
-		return 1;
-	}
+	// 解除信号阻塞
+	signals_unblock();
+	// 信号处理
+	signals_handle( main_cleanup_and_exit );
 
-	FILE* child_fp = mypopen( cmd, &child_pid );
-	if ( unlikely( !child_fp ) ) {
-		error( "Cannot popen(\"%s\", \"r\").", cmd );
-		return 0;
-	}
+	// const char* cmd = appconfig_get_str( "plugins.timer_shell" );
+	// if ( cmd == NULL ) {
+	// 	error( "plugins.timer_shell is not set." );
+	// 	return 1;
+	// }
 
-	debug( "connected to '%s' running on pid %d", cmd, child_pid );
+	// FILE* child_fp = mypopen( cmd, &child_pid );
+	// if ( unlikely( !child_fp ) ) {
+	// 	error( "Cannot popen(\"%s\", \"r\").", cmd );
+	// 	return 0;
+	// }
 
-	while ( 1 ) {
-		if ( fgets( buf, BUF_SIZE, child_fp ) == NULL ) {
-			if ( feof( child_fp ) ) {
-				info( "fgets() return EOF." );
-				break;
-			}
-			else if ( ferror( child_fp ) ) {
-				info( "fgets() return error." );
-				break;
-			}
-			else {
-				info( "fgets() return unknown." );
-			}
-		}
-		buf[strlen(buf) - 1] = '\0';
-		info( "recv: [%s]", buf );
-	}
+	// debug( "connected to '%s' running on pid %d", cmd, child_pid );
 
-	info( "'%s' (pid %d) disconnected.", cmd, child_pid );
+	// while ( 1 ) {
+	// 	if ( fgets( buf, BUF_SIZE, child_fp ) == NULL ) {
+	// 		if ( feof( child_fp ) ) {
+	// 			info( "fgets() return EOF." );
+	// 			break;
+	// 		}
+	// 		else if ( ferror( child_fp ) ) {
+	// 			info( "fgets() return error." );
+	// 			break;
+	// 		}
+	// 		else {
+	// 			info( "fgets() return unknown." );
+	// 		}
+	// 	}
+	// 	buf[strlen(buf) - 1] = '\0';
+	// 	info( "recv: [%s]", buf );
+	// }
 
-	killpid( child_pid );
+	// info( "'%s' (pid %d) disconnected.", cmd, child_pid );
 
-	int32_t child_worker_ret_code = mypclose( child_fp, child_pid );
-	if ( likely( child_worker_ret_code == 0 ) ) {
-		info( "child worker exit normally." );
-	}
-	else {
-		error( "child worker exit abnormally." );
-	}
+	// killpid( child_pid );
 
-	appconfig_destroy();
-	log_fini();
+	// int32_t child_worker_ret_code = mypclose( child_fp, child_pid );
+	// if ( likely( child_worker_ret_code == 0 ) ) {
+	// 	info( "child worker exit normally." );
+	// }
+	// else {
+	// 	error( "child worker exit abnormally." );
+	// }
 
 	return 0;
 }

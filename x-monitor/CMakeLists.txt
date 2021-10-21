@@ -46,7 +46,7 @@ add_definitions(
 )
 
 # 项目子目录
-add_subdirectory(tools)
+add_subdirectory(utils)
 
 # 子目录源代码
 set(PLUGINSD_FILES
@@ -65,4 +65,4 @@ add_executable(x-monitor main.c
                         ${APPCONFIG_FILES}
                         )
                         
-target_link_libraries(x-monitor tools ${EXTRA_LIBS} pthread z m)
+target_link_libraries(x-monitor xmonitor-utils ${EXTRA_LIBS} pthread z m)

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-14 16:33:29
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-15 17:46:34
+ * @Last Modified time: 2021-10-21 11:43:56
  */
 
 #pragma once
@@ -25,4 +25,16 @@
 // 强制内嵌函数
 #ifndef __always_inline
 # define __always_inline	inline __attribute__((always_inline))
+#endif
+
+#ifdef __GNUC__
+#  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
+#else
+#  define UNUSED(x) UNUSED_ ## x
+#endif
+
+#ifdef __GNUC__
+#  define UNUSED_FUNCTION(x) __attribute__((__unused__)) UNUSED_ ## x
+#else
+#  define UNUSED_FUNCTION(x) UNUSED_ ## x
 #endif

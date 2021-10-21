@@ -11,5 +11,5 @@
 
 extern char pid_file[];
 
-extern int32_t mk_daemon( int32_t dont_fork, const char* user );
+extern int32_t become_daemon( int32_t dont_fork, const char* user );
 extern int32_t become_user( const char* user, int32_t pid_fd );

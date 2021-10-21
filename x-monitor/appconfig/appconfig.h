@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "tools/common.h"
+#include "utils/common.h"
 
 extern int32_t appconfig_load( const char* config_file );
 extern void appconfig_destroy();

@@ -6,9 +6,9 @@
  */
 
 #include "appconfig.h"
-#include "tools/common.h"
-#include "tools/compiler.h"
-#include "tools/log.h"
+#include "utils/common.h"
+#include "utils/compiler.h"
+#include "utils/log.h"
 
 #include "libconfig/libconfig.h"
 

@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "tools/common.h"
+#include "utils/common.h"
 
 // thread worker function
 extern void* pluginsd_main(void*);

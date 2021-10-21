@@ -117,7 +117,7 @@ int32_t become_user( const char* user, int32_t pid_fd ) {
 	return 0;
 }
 
-int32_t mk_daemon( int32_t dont_fork, const char* user ) {
+int32_t become_daemon( int32_t dont_fork, const char* user ) {
 	if ( !dont_fork ) {
 		int32_t i = fork();
 		if ( i == -1 ) {

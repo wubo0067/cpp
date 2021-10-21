@@ -1,8 +1,8 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-10-15 10:26:53
- * @Last Modified by:   CALM.WU
- * @Last Modified time: 2021-10-15 10:26:53
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2021-10-21 11:23:12
  */
 
 #include "signals.h"
@@ -39,7 +39,7 @@ static __signals_waiting_t signal_waiting_list[] = {
 static void signal_handler( int32_t signo ) {
 	// find the entry in the list
 	int32_t i;
-	for ( i = 0; i < (int32_t)ARRAY_SIZE( signal_waiting_list ); i++ ) {
+	for ( i = 0; i < ( int32_t ) ARRAY_SIZE( signal_waiting_list ); i++ ) {
 		if ( unlikely( signal_waiting_list[i].signo == signo ) ) {
 			// 信号接收计数
 			signal_waiting_list[i].receive_count++;
@@ -62,7 +62,7 @@ void signals_init( void ) {
 	sigfillset( &sa.sa_mask ); // 调用信号处理函数时，要屏蔽所有的信号。
 
 	int32_t i = 0;
-	for ( i = 0; i < (int32_t)ARRAY_SIZE( signal_waiting_list ); i++ ) {
+	for ( i = 0; i < ( int32_t ) ARRAY_SIZE( signal_waiting_list ); i++ ) {
 		switch ( signal_waiting_list[i].action ) {
 			case E_SIGNAL_IGNORE:
 				sa.sa_handler = SIG_IGN;
@@ -79,7 +79,7 @@ void signals_init( void ) {
 	}
 }
 
-void signals_handle( void ) {
+void signals_handle( clean_and_exit_handle_fn fn ) {
 	while ( 1 ) {
 		if ( pause() == -1 && errno == EINTR ) {
 			int32_t found = 1;
@@ -88,7 +88,7 @@ void signals_handle( void ) {
 				found     = 0;
 				int32_t i = 0;
 
-				for ( i = 0; i < (int32_t)ARRAY_SIZE( signal_waiting_list ); i++ ) {
+				for ( i = 0; i < ( int32_t ) ARRAY_SIZE( signal_waiting_list ); i++ ) {
 					if ( signal_waiting_list[i].receive_count > 0 ) {
 						found                                = 1;
 						signal_waiting_list[i].receive_count = 0;
@@ -97,6 +97,7 @@ void signals_handle( void ) {
 						switch ( signal_waiting_list[i].action ) {
 							case E_SIGNAL_EXIT_CLEANLY:
 								info( "Received signal %s. Exiting cleanly.", signal_name );
+								fn( signal_waiting_list[i].signo );
 								exit( 0 );
 								break;
 							case E_SIGNAL_SAVE_DATABASE:
@@ -122,4 +123,32 @@ void signals_handle( void ) {
 			break;
 		}
 	}
+}
+
+int32_t signals_block() {
+	sigset_t set;
+	sigfillset( &set );
+
+	// sigprocmask vs pthread_sigmask
+	// For one, the POSIX.1 standard does not explicitly specify the usage of sigprocmask in multi-threaded programs, so
+	// not all implementations may behave predictably in multi-threaded applications. Safer to use pthread_sigmask in
+	// this case.
+	if ( 0 != pthread_sigmask( SIG_BLOCK, &set, NULL ) ) {
+		error( "Cannot block signals" );
+		return -1;
+	}
+
+	return 0;
+}
+
+int32_t signals_unblock() {
+	sigset_t set;
+	sigfillset( &set );
+
+	if ( 0 != pthread_sigmask( SIG_UNBLOCK, &set, NULL ) ) {
+		error( "Cannot unblock signals" );
+		return -1;
+	}
+
+	return 0;
 }
