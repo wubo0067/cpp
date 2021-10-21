@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-21 11:43:43
+ * @Last Modified time: 2021-10-21 14:59:14
  */
 
 #include "config.h"
@@ -37,13 +37,14 @@ static const struct option_def option_definitions[] = {
 	{ 'c', "Configuration file to load.", "filename", CONFIG_FILENAME },
 	{ 'D', "Do not fork. Run in the foreground.", NULL, "run in the background" },
 	{ 'h', "Display this help message.", NULL, NULL },
-	{ 'P', "File to save a pid while running.", "filename", "do not save pid to a file" },
 	{ 'i', "The IP address to listen to.", "IP", "all IP addresses IPv4 and IPv6" },
 	{ 'p', "API/Web port to use.", "port", "19999" },
 	{ 's', "Prefix for /proc and /sys (for containers).", "path", "no prefix" },
 	{ 't', "The internal clock of netdata.", "seconds", "1" }, { 'u', "Run as user.", "username", "netdata" },
 	{ 'v', "Print netdata version and exit.", NULL, NULL }, { 'V', "Print netdata version and exit.", NULL, NULL }
 };
+
+static const char * pid_file = NULL;
 
 // killpid kills pid with SIGTERM.
 int killpid( pid_t pid ) {
@@ -121,6 +122,13 @@ void help() {
 }
 
 static void main_cleanup_and_exit( int32_t UNUSED( signo ) ) {
+
+	if ( pid_file != NULL && pid_file[0] != '\0' ) {
+		info( "EXIT: removing pid file '%s'", pid_file );
+		if ( unlink( pid_file ) != 0 )
+			error( "EXIT: cannot remove pid file '%s'", pid_file );
+	}
+
 	// free config
 	appconfig_destroy();
 	// free log
@@ -130,7 +138,7 @@ static void main_cleanup_and_exit( int32_t UNUSED( signo ) ) {
 int32_t main( int32_t argc, char* argv[] ) {
 	char UNUSED( buf[BUF_SIZE] ) = { 0 };
 	pid_t UNUSED( child_pid )    = 0;
-	int32_t dont_fork			 = 0;
+	int32_t dont_fork            = 0;
 	int32_t config_loaded        = 0;
 
 	// parse options
@@ -193,7 +201,9 @@ int32_t main( int32_t argc, char* argv[] ) {
 	signals_init();
 
 	// 编程守护进程
-	become_daemon( dont_fork, NULL );
+	pid_file = appconfig_get_str( "application.pid_file" );
+	const char * user = appconfig_get_str( "application.run_as_user" );
+	become_daemon( dont_fork, pid_file, user );
 
 	info( "---start mypopen running pid: %d---", getpid() );
 

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-15 10:20:51
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-15 17:47:27
+ * @Last Modified time: 2021-10-21 15:27:30
  */
 
 #include "daemon.h"
@@ -10,7 +10,7 @@
 #include "files.h"
 #include "log.h"
 
-char pid_file[FILENAME_MAX + 1] = { 0 };
+#include "appconfig/appconfig.h"
 
 const int32_t process_nice_level = 19;
 const int32_t process_oom_score  = 1000;
@@ -70,10 +70,9 @@ static void chown_open_file( int32_t fd, uid_t uid, gid_t gid ) {
 	return;
 }
 
-int32_t become_user( const char* user, int32_t pid_fd ) {
+int32_t become_user( const char* user, int32_t pid_fd, const char* pid_file ) {
 	// 获取ruid
 	int32_t is_root = ( ( getuid() == 0 ) ? 1 : 0 );
-	
 
 	struct passwd* pw = getpwnam( user );
 	if ( unlikely( !pw ) ) {
@@ -94,6 +93,18 @@ int32_t become_user( const char* user, int32_t pid_fd ) {
 
 	chown_open_file( pid_fd, ruid, rgid );
 
+	if ( setgid( rgid ) < 0 ) {
+		error( "setgid failed, user: %s, ruid: %u, rgid: %u, error: %s", user, ( uint32_t ) ruid, ( uint32_t ) rgid,
+		    strerror( errno ) );
+		return -1;
+	}
+
+	if ( setegid( rgid ) < 0 ) {
+		error( "setegid failed, user: %s, ruid: %u, rgid: %u, error: %s", user, ( uint32_t ) ruid, ( uint32_t ) rgid,
+		    strerror( errno ) );
+		return -1;
+	}
+
 	if ( setuid( ruid ) < 0 ) {
 		error( "setuid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
 		return -1;
@@ -102,22 +113,12 @@ int32_t become_user( const char* user, int32_t pid_fd ) {
 	if ( seteuid( ruid ) < 0 ) {
 		error( "seteuid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
 		return -1;
-	}
-
-	if ( setgid( rgid ) < 0 ) {
-		error( "setgid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
-		return -1;
-	}
-
-	if ( setegid( rgid ) < 0 ) {
-		error( "setegid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t ) ruid, ( uint32_t ) rgid );
-		return -1;
-	}
+	}	
 
 	return 0;
 }
 
-int32_t become_daemon( int32_t dont_fork, const char* user ) {
+int32_t become_daemon( int32_t dont_fork, const char* pid_file, const char* user ) {
 	if ( !dont_fork ) {
 		int32_t i = fork();
 		if ( i == -1 ) {
@@ -149,14 +150,17 @@ int32_t become_daemon( int32_t dont_fork, const char* user ) {
 		}
 	}
 
+	info( "run as user:'%s', pid file:'%s'", user, pid_file );
+
 	// 生成pid文件
-	int32_t pidfd = -1;
-	if ( pid_file[0] != '\0' ) {
-		pidfd = open( pid_file, O_RDWR | O_CREAT, 0644 );
-		if ( pidfd >= 0 ) {
+	int32_t pid_fd = -1;
+
+	if ( pid_file != NULL && pid_file[0] != '\0' ) {
+		pid_fd = open( pid_file, O_RDWR | O_CREAT, 0644 );
+		if ( pid_fd >= 0 ) {
 			char pid_str[32] = { 0 };
 			sprintf( pid_str, "%d", getpid() );
-			if ( write( pidfd, pid_str, strlen( pid_str ) ) <= 0 ) {
+			if ( write( pid_fd, pid_str, strlen( pid_str ) ) <= 0 ) {
 				error( "Cannot write pidfile '%s'.", pid_file );
 			}
 		}
@@ -175,7 +179,7 @@ int32_t become_daemon( int32_t dont_fork, const char* user ) {
 	set_process_nice_level();
 
 	if ( user && *user ) {
-		if ( become_user( user, pidfd ) != 0 ) {
+		if ( become_user( user, pid_fd, pid_file ) != 0 ) {
 			error( "Cannot become user '%s'.", user );
 			exit( 0 - errno );
 		}
@@ -184,8 +188,8 @@ int32_t become_daemon( int32_t dont_fork, const char* user ) {
 		}
 	}
 
-	if ( pidfd != -1 ) {
-		close( pidfd );
+	if ( pid_fd != -1 ) {
+		close( pid_fd );
 	}
 	return 0;
 }
