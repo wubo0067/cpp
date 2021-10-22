@@ -14,9 +14,8 @@
 #include "utils/popen.h"
 #include "utils/signals.h"
 
-#include "plugins.d/plugins_d.h"
-
 #include "appconfig/appconfig.h"
+#include "plugins/plugins.h"
 
 #define BUF_SIZE 1024
 
@@ -208,7 +207,7 @@ int32_t main( int32_t argc, char* argv[] ) {
 	info( "---start mypopen running pid: %d---", getpid() );
 
 	// 初始化插件管理
-	pluginsd_main( NULL );
+	//pluginsd_start( NULL );
 
 	// 解除信号阻塞
 	signals_unblock();

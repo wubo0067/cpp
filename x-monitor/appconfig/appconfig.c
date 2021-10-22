@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-18 11:47:42
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-18 11:53:00
+ * @Last Modified time: 2021-10-22 14:35:15
  */
 
 #include "appconfig.h"
@@ -38,8 +38,9 @@ int32_t appconfig_load( const char* config_file ) {
 
 	// 加载配置数据
 	if ( config_read_file( &__appconfig.cfg, config_file ) != CONFIG_TRUE ) {
-		fprintf(stderr,  "config_read_file failed: %s:%d - %s", config_error_file( &__appconfig.cfg ),
+		fprintf( stderr, "config_read_file failed: %s:%d - %s", config_error_file( &__appconfig.cfg ),
 		    config_error_line( &__appconfig.cfg ), config_error_text( &__appconfig.cfg ) );
+		__appconfig.loaded = false;
 		config_destroy( &__appconfig.cfg );
 		ret = -1;
 	}
@@ -66,25 +67,58 @@ void appconfig_destroy() {
 // ----------------------------------------------------------------------------
 // locking
 
-void appconfig_rdlock() { pthread_rwlock_rdlock( &__appconfig.rw_lock ); }
+// void appconfig_rdlock() { pthread_rwlock_rdlock( &__appconfig.rw_lock ); }
 
-void appconfig_wrlock() { pthread_rwlock_wrlock( &__appconfig.rw_lock ); }
+// void appconfig_wrlock() { pthread_rwlock_wrlock( &__appconfig.rw_lock ); }
 
-void appconfig_unlock() { pthread_rwlock_unlock( &__appconfig.rw_lock ); }
+// void appconfig_unlock() { pthread_rwlock_unlock( &__appconfig.rw_lock ); }
 
 // ----------------------------------------------------------------------------
 
 const char* appconfig_get_str( const char* key ) {
-	if ( unlikely( !__appconfig.loaded || !key ) ) {
+	if ( unlikely( !key ) ) {
 		return NULL;
 	}
 
 	const char* str = NULL;
 	pthread_rwlock_rdlock( &__appconfig.rw_lock );
-	if ( !config_lookup_string( &__appconfig.cfg, key, &str ) ) {
-		error( "config_lookup_string failed: %s", key );
+	if ( likely( __appconfig.loaded ) ) {
+		if ( !config_lookup_string( &__appconfig.cfg, key, &str ) ) {
+			error( "config_lookup_string failed: %s", key );
+		}
 	}
 	pthread_rwlock_unlock( &__appconfig.rw_lock );
-
 	return str;
+}
+
+int32_t appconfig_get_bool( const char* key ) {
+	if ( unlikely( !key ) ) {
+		return NULL;
+	}
+
+	int32_t b;
+	pthread_rwlock_rdlock( &__appconfig.rw_lock );
+	if ( likely( __appconfig.loaded ) ) {
+		if ( !config_lookup_bool( &__appconfig.cfg, key, &b ) ) {
+			error( "config_lookup_bool failed: %s", key );
+		}
+	}
+	pthread_rwlock_unlock( &__appconfig.rw_lock );
+	return b;
+}
+
+int32_t appconfig_get_int( const char* key ) {
+	if ( unlikely( !key ) ) {
+		return NULL;
+	}
+
+	int32_t i;
+	pthread_rwlock_rdlock( &__appconfig.rw_lock );
+	if ( likely( __appconfig.loaded ) ) {
+		if ( !config_lookup_int( &__appconfig.cfg, key, &i ) ) {
+			error( "config_lookup_int failed: %s", key );
+		}
+	}
+	pthread_rwlock_unlock( &__appconfig.rw_lock );
+	return b;
 }

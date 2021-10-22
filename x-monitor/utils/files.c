@@ -2,14 +2,13 @@
  * @Author: CALM.WU
  * @Date: 2021-10-15 16:55:25
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-15 17:49:04
+ * @Last Modified time: 2021-10-22 12:03:32
  */
 
 #include "files.h"
+#include "consts.h"
 #include "compiler.h"
 #include "log.h"
-
-#define NUMBER_BUFFER_SIZE 30
 
 // 返回读取的字节数
 static int32_t read_file( const char* file_name, char* buffer, size_t buffer_size ) {

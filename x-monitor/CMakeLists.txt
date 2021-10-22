@@ -47,11 +47,12 @@ add_definitions(
 
 # 项目子目录
 add_subdirectory(utils)
+add_subdirectory(test/static_variable)
 
 # 子目录源代码
-set(PLUGINSD_FILES
-        plugins.d/plugins_d.c
-        plugins.d/plugins_d.h
+set(PLUGINS_FILES
+        plugins/plugins.c
+        plugins/plugins.h
         )
 
 set(APPCONFIG_FILES
