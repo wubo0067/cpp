@@ -43,7 +43,25 @@ static const struct option_def option_definitions[] = {
 	{ 'v', "Print netdata version and exit.", NULL, NULL }, { 'V', "Print netdata version and exit.", NULL, NULL }
 };
 
-static const char * pid_file = NULL;
+static const char* pid_file = NULL;
+
+typedef struct {
+	struct xmonitor_static_routine* root;
+	struct xmonitor_static_routine* last;
+} xmonitor_static_route_list_t;
+
+static xmonitor_static_route_list_t __xmonitor_static_route_list = { NULL, NULL };
+
+void register_xmonitor_static_routine( struct xmonitor_static_routine* routine ) {
+	if ( __xmonitor_static_route_list.root == NULL ) {
+		__xmonitor_static_route_list.root = routine;
+		__xmonitor_static_route_list.last = routine;
+	}
+	else {
+		__xmonitor_static_route_list.last->next = routine;
+		__xmonitor_static_route_list.last       = routine;
+	}
+}
 
 // killpid kills pid with SIGTERM.
 int killpid( pid_t pid ) {
@@ -113,7 +131,6 @@ void help() {
 		else {
 			fprintf( stderr, "\n" );
 		}
-		// fprintf( stderr, "\n" );
 	}
 
 	fflush( stderr );
@@ -126,6 +143,15 @@ static void main_cleanup_and_exit( int32_t UNUSED( signo ) ) {
 		info( "EXIT: removing pid file '%s'", pid_file );
 		if ( unlink( pid_file ) != 0 )
 			error( "EXIT: cannot remove pid file '%s'", pid_file );
+	}
+
+	struct xmonitor_static_routine* routine = __xmonitor_static_route_list.root;
+	struct xmonitor_static_routine* next    = NULL;
+	while ( routine ) {
+		next = routine->next;
+		debug( "Cleaning up routine '%s'", routine->name );
+		free( routine );
+		routine = next;
 	}
 
 	// free config
@@ -200,14 +226,14 @@ int32_t main( int32_t argc, char* argv[] ) {
 	signals_init();
 
 	// 编程守护进程
-	pid_file = appconfig_get_str( "application.pid_file" );
-	const char * user = appconfig_get_str( "application.run_as_user" );
+	pid_file         = appconfig_get_str( "application.pid_file" );
+	const char* user = appconfig_get_str( "application.run_as_user" );
 	become_daemon( dont_fork, pid_file, user );
 
 	info( "---start mypopen running pid: %d---", getpid() );
 
 	// 初始化插件管理
-	//pluginsd_start( NULL );
+	// pluginsd_start( NULL );
 
 	// 解除信号阻塞
 	signals_unblock();

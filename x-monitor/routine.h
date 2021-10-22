@@ -9,13 +9,17 @@
 
 #include <pthread.h>
 
-typedef struct {
+struct xmonitor_static_routine {
 	const char* name;
 	const char* config_name;
 	pthread_t* thread;
 
-	void ( *init_routine )( );
+	void ( *init_routine )();
 	void* ( *start_routine )( void* );
 
 	volatile sig_atomic_t exit_flag;
-} xmonitor_static_routine_t;
+
+	struct xmonitor_static_routine* next;
+};
+
+extern void register_xmonitor_static_routine( struct xmonitor_static_routine* routine );
