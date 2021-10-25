@@ -51,8 +51,8 @@ add_subdirectory(test/construct_init)
 
 # 子目录源代码
 set(PLUGINS_FILES
-        plugins/plugins.c
-        plugins/plugins.h
+        plugins.d/plugins_d.c
+        plugins.d/plugins_d.h
         )
 
 set(APPCONFIG_FILES

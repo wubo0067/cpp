@@ -9,6 +9,6 @@
 
 #include "utils/common.h"
 
-extern bool pluginsmgr_routine_init();
-extern int32_t pluginsmgr_routine_start( void *arg );
-extern void pluginsmgr_routine_stop();
+extern int32_t pluginsd_routine_init();
+extern int32_t pluginsd_routine_start( void *arg );
+extern void pluginsd_routine_stop();

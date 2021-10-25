@@ -8,13 +8,17 @@
 #pragma once
 
 #include <pthread.h>
+#include <signal.h>
+#include <stdint.h>
 
 struct xmonitor_static_routine {
 	const char* name;
 	const char* config_name;
-	pthread_t* thread;
 
-	bool ( *init_routine )();
+	volatile sig_atomic_t enabled; // the current status of the thread
+	pthread_t thread_id;
+
+	int32_t ( *init_routine )();
 	void* ( *start_routine )( void* );
 	void ( *stop_routine )();
 

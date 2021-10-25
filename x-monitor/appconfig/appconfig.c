@@ -93,7 +93,7 @@ const char* appconfig_get_str( const char* key ) {
 
 int32_t appconfig_get_bool( const char* key ) {
 	if ( unlikely( !key ) ) {
-		return NULL;
+		return 0;
 	}
 
 	int32_t b;
@@ -109,7 +109,7 @@ int32_t appconfig_get_bool( const char* key ) {
 
 int32_t appconfig_get_int( const char* key ) {
 	if ( unlikely( !key ) ) {
-		return NULL;
+		return 0;
 	}
 
 	int32_t i;
@@ -120,5 +120,5 @@ int32_t appconfig_get_int( const char* key ) {
 		}
 	}
 	pthread_rwlock_unlock( &__appconfig.rw_lock );
-	return b;
+	return i;
 }
