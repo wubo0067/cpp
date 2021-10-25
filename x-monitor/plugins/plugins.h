@@ -9,5 +9,6 @@
 
 #include "utils/common.h"
 
-// thread worker function
-extern int32_t pluginsmgr_main( void *arg );
+extern bool pluginsmgr_routine_init();
+extern int32_t pluginsmgr_routine_start( void *arg );
+extern void pluginsmgr_routine_stop();

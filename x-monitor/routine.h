@@ -14,8 +14,9 @@ struct xmonitor_static_routine {
 	const char* config_name;
 	pthread_t* thread;
 
-	void ( *init_routine )();
+	bool ( *init_routine )();
 	void* ( *start_routine )( void* );
+	void ( *stop_routine )();
 
 	volatile sig_atomic_t exit_flag;
 

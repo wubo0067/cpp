@@ -47,7 +47,7 @@ add_definitions(
 
 # 项目子目录
 add_subdirectory(utils)
-add_subdirectory(test/static_variable)
+add_subdirectory(test/construct_init)
 
 # 子目录源代码
 set(PLUGINS_FILES

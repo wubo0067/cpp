@@ -39,33 +39,34 @@ static void register_xmonitor_static_routine( struct xmonitor_static_routine* ro
 	}
 }
 
-static const char * routine_1_name = "routine_1_name";
-static const char * routine_2_name = "routine_2_name";
+static const char* routine_1_name = "routine_1_name";
+static const char* routine_2_name = "routine_2_name";
 
-__attribute__((constructor)) static void register_route_1() {
-    fprintf(stderr, "register_route_1\n");
-    struct xmonitor_static_routine *routine_1 = (struct x)calloc(1, sizeof(struct xmonitor_static_routine_t));
-    routine_1->name = routine_1_name;
-    register_xmonitor_static_routine(routine_1);
+__attribute__( ( constructor ) ) static void register_route_1() {
+	fprintf( stderr, "register_route_1\n" );
+	struct xmonitor_static_routine* routine_1
+	    = ( struct xmonitor_static_routine* ) calloc( 1, sizeof( struct xmonitor_static_routine ) );
+	routine_1->name = routine_1_name;
+	register_xmonitor_static_routine( routine_1 );
 }
 
-__attribute__((constructor)) static void register_route_2() {
-    fprintf(stderr, "register_route_2\n");
-    struct xmonitor_static_routine *routine_2 = (struct x)calloc(1, sizeof(struct xmonitor_static_routine_t));
-    routine_2->name = routine_2_name;
-    register_xmonitor_static_routine(routine_2);
+__attribute__( ( constructor ) ) static void register_route_2() {
+	fprintf( stderr, "register_route_2\n" );
+	struct xmonitor_static_routine* routine_2
+	    = ( struct xmonitor_static_routine* ) calloc( 1, sizeof( struct xmonitor_static_routine ) );
+	routine_2->name = routine_2_name;
+	register_xmonitor_static_routine( routine_2 );
 }
 
-int32_t main(int argc, char const *argv[])
-{
+int32_t main( int argc, char const* argv[] ) {
 	struct xmonitor_static_routine* routine = __xmonitor_static_route_list.root;
 	struct xmonitor_static_routine* next    = NULL;
 	while ( routine ) {
 		next = routine->next;
-		fprintf( stderr, "Cleaning up routine '%s'", routine->name );
+		fprintf( stderr, "Cleaning up routine '%s'\n", routine->name );
 		free( routine );
 		routine = next;
 	}
-    fprintf(stderr, "main \n");
-    return 0;
+	fprintf( stderr, "main \n" );
+	return 0;
 }

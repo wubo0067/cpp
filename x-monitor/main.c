@@ -225,20 +225,29 @@ int32_t main( int32_t argc, char* argv[] ) {
 	signals_block();
 	signals_init();
 
-	// 编程守护进程
-	pid_file         = appconfig_get_str( "application.pid_file" );
-	const char* user = appconfig_get_str( "application.run_as_user" );
-	become_daemon( dont_fork, pid_file, user );
-
 	info( "---start mypopen running pid: %d---", getpid() );
 
-	// 初始化插件管理
-	// pluginsd_start( NULL );
+	// INIT routines
+	struct xmonitor_static_routine* routine = __xmonitor_static_route_list.root;
+	for ( routine && routine->init_func ) {
+		if ( !routine->init_func() ) {
+			error( "init routine '%s' failed", routine->name );
+			return -1;
+		}
+		routine = routine->next;
+	}
 
-	// 解除信号阻塞
-	signals_unblock();
-	// 信号处理
-	signals_handle( main_cleanup_and_exit );
+	// 守护进程
+	pid_file         = appconfig_get_str( "application.pid_file" );
+	const char* user = appconfig_get_str( "application.run_as_user" );
+	become_daemon( dont_fork, pid_file, user );	
+
+	// START routines
+	routine = __xmonitor_static_route_list.root;
+	for ( routine && routine->start_func ) {
+		
+		routine = routine->next;
+	}	
 
 	// const char* cmd = appconfig_get_str( "plugins.timer_shell" );
 	// if ( cmd == NULL ) {
@@ -283,6 +292,11 @@ int32_t main( int32_t argc, char* argv[] ) {
 	// else {
 	// 	error( "child worker exit abnormally." );
 	// }
+
+	// 解除信号阻塞
+	signals_unblock();
+	// 信号处理
+	signals_handle( main_cleanup_and_exit );	
 
 	return 0;
 }
