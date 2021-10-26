@@ -79,7 +79,7 @@ void appconfig_destroy()
 
 // ----------------------------------------------------------------------------
 
-const char *appconfig_get_str(const char *key)
+const char *appconfig_get_str(const char *key, const char * def)
 {
     if (unlikely(!key)) {
         return NULL;
@@ -89,41 +89,44 @@ const char *appconfig_get_str(const char *key)
     pthread_rwlock_rdlock(&__appconfig.rw_lock);
     if (likely(__appconfig.loaded)) {
         if (!config_lookup_string(&__appconfig.cfg, key, &str)) {
-            error("config_lookup_string failed: %s", key);
+            warn("config_lookup_string failed: %s", key);
+            str = def;
         }
     }
     pthread_rwlock_unlock(&__appconfig.rw_lock);
     return str;
 }
 
-int32_t appconfig_get_bool(const char *key)
+int32_t appconfig_get_bool(const char *key, int32_t def)
 {
     if (unlikely(!key)) {
-        return 0;
+        return def;
     }
 
     int32_t b;
     pthread_rwlock_rdlock(&__appconfig.rw_lock);
     if (likely(__appconfig.loaded)) {
         if (!config_lookup_bool(&__appconfig.cfg, key, &b)) {
-            error("config_lookup_bool failed: %s", key);
+            warn("config_lookup_bool failed: %s", key);
+            b = def;
         }
     }
     pthread_rwlock_unlock(&__appconfig.rw_lock);
     return b;
 }
 
-int32_t appconfig_get_int(const char *key)
+int32_t appconfig_get_int(const char *key, int32_t def)
 {
     if (unlikely(!key)) {
-        return 0;
+        return def;
     }
 
     int32_t i;
     pthread_rwlock_rdlock(&__appconfig.rw_lock);
     if (likely(__appconfig.loaded)) {
         if (!config_lookup_int(&__appconfig.cfg, key, &i)) {
-            error("config_lookup_int failed: %s", key);
+            warn("config_lookup_int failed: %s", key);
+            i = def;
         }
     }
     pthread_rwlock_unlock(&__appconfig.rw_lock);

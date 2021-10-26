@@ -23,7 +23,7 @@
 static inline int custom_popene(const char *command, volatile pid_t *pidptr,
                                 char **env, uint8_t flags, FILE **fpp)
 {
-    FILE *            fp           = NULL;
+    FILE             *fp           = NULL;
     int32_t           ret          = 0; // success return value
     int32_t           pipefd[2]    = { -1, -1 };
     int32_t           error        = 0;

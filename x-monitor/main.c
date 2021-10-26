@@ -216,7 +216,7 @@ int32_t main(int32_t argc, char *argv[])
                 } else {
                     // 初始化log
                     const char *log_config_file =
-                        appconfig_get_str("application.log_config_file");
+                        appconfig_get_str("application.log_config_file", NULL);
                     if (log_init(log_config_file) < 0) {
                         return -1;
                     }
@@ -255,7 +255,7 @@ int32_t main(int32_t argc, char *argv[])
     for (; routine; routine = routine->next) {
         // 判断是否enable
         if (routine->config_name) {
-            routine->enabled = appconfig_get_bool(routine->config_name);
+            routine->enabled = appconfig_get_bool(routine->config_name, 0);
         }
 
         if (routine->enabled && NULL != routine->init_routine) {
@@ -273,8 +273,8 @@ int32_t main(int32_t argc, char *argv[])
     }
 
     // 守护进程
-    pid_file         = appconfig_get_str("application.pid_file");
-    const char *user = appconfig_get_str("application.run_as_user");
+    pid_file         = appconfig_get_str("application.pid_file", NULL);
+    const char *user = appconfig_get_str("application.run_as_user", NULL);
     become_daemon(dont_fork, pid_file, user);
 
     // START routines
