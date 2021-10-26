@@ -24,6 +24,7 @@ struct external_plugin {
     char full_file_name[FILENAME_MAX + 1];
     char cmd[EXTERNAL_PLUGIN_CMD_LINE_MAX + 1]; // the command that it executes
 
+    int32_t               update_every;
     volatile pid_t        pid; //
     time_t                start_time;
     volatile sig_atomic_t enabled;
@@ -172,9 +173,10 @@ void *pluginsd_routine_start(void *arg)
                 ep = (struct external_plugin *)calloc(
                     1, sizeof(struct external_plugin));
 
-                snprintf(ep->id, CONFIG_NAME_MAX, "plugin:%s",
+                snprintf(ep->id, CONFIG_NAME_MAX, "plugin_%s",
                          external_plugin_cfgname);
                 strncpy(ep->file_name, entry->d_name, FILENAME_MAX);
+                // -Wformat-truncation=
                 snprintf(ep->full_file_name, FILENAME_MAX, "%s/%s",
                          __pluginsd.plugins_dir, entry->d_name);
                 // 检查文件是否可执行
@@ -185,9 +187,28 @@ void *pluginsd_routine_start(void *arg)
                     continue;
                 }
 
-                ep->enabled    = enabled;
-                ep->start_time = now_realtime_sec();
+                ep->enabled      = enabled;
+                ep->start_time   = now_realtime_sec();
+                ep->update_every = appconfig_get_int(ep->id, 5);
+
+                // 生成执行命令
+                char *def = "";
+                snprintf(ep->cmd, EXTERNAL_PLUGIN_CMD_LINE_MAX, "exec %s %d %s",
+                         ep->full_file_name, ep->update_every, "");
+
+                debug(
+                    "plugin id:'%s' file_name:'%s' full_file_name:'%s', cmd:'%s'",
+                    ep->id, ep->file_name, ep->full_file_name, ep->cmd);
+
+                // add header
+                if (likely(__pluginsd.external_plugins_root)) {
+                    ep->next = __pluginsd.external_plugins_root;
+                }
+                __pluginsd.external_plugins_root = ep;
+
                 // 创建运行线程
+                if (ep->enabled) {
+                }
             }
         }
         sleep(__pluginsd.scan_frequency);
