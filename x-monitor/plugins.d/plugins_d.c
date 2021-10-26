@@ -148,7 +148,7 @@ void *pluginsd_routine_start(void *arg)
             char external_plugin_cfgname[CONFIG_NAME_MAX + 1];
             snprintf(external_plugin_cfgname, CONFIG_NAME_MAX, "pluginsd.%.*s",
                      (int)(len - PLUGINSD_FILE_SUFFIX_LEN), entry->d_name);
-            int32_t enabled = appconfig_get_int(external_plugin_cfgname, 0);
+            int32_t enabled = appconfig_get_bool(external_plugin_cfgname, 0);
 
             if (unlikely(!enabled)) {
                 debug("external plugin config '%s' is not enabled",
