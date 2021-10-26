@@ -121,7 +121,6 @@
 /* Define to 1 if you have the `snprintf' function. */
 #define HAVE_SNPRINTF
 
-
 /* Define to 1 if you have the `strcasecmp' function. */
 #define HAVE_STRCASECMP 1
 

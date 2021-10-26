@@ -9,14 +9,14 @@
 
 #include <stdint.h>
 
-extern int32_t appconfig_load( const char* config_file );
-extern void appconfig_destroy();
+extern int32_t appconfig_load(const char *config_file);
+extern void    appconfig_destroy();
 
 // extern void appconfig_rdlock();
 // extern void appconfig_wrlock();
 // extern void appconfig_unlock();
 
 // ---------------------------------------------------------
-extern const char* appconfig_get_str( const char* key );
-extern int32_t appconfig_get_bool( const char* key );
-extern int32_t appconfig_get_int( const char* key );
+extern const char *appconfig_get_str(const char *key);
+extern int32_t     appconfig_get_bool(const char *key);
+extern int32_t     appconfig_get_int(const char *key);

@@ -10,7 +10,7 @@
 #include "common.h"
 
 // fork-exec
-extern FILE* mypopen( const char* command, volatile pid_t* pidptr );
-extern FILE* mypopene( const char* command, volatile pid_t* pidptr, char** env );
+extern FILE *mypopen(const char *command, volatile pid_t *pidptr);
+extern FILE *mypopene(const char *command, volatile pid_t *pidptr, char **env);
 // 子进程退出清理
-extern int32_t mypclose( FILE* fp, pid_t pid );
+extern int32_t mypclose(FILE *fp, pid_t pid);

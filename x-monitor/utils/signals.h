@@ -11,7 +11,7 @@
 
 typedef void (*clean_and_exit_handle_fn)(int32_t signo);
 
-extern void signals_init(void);
-extern void signals_handle(clean_and_exit_handle_fn fn);
+extern void    signals_init(void);
+extern void    signals_handle(clean_and_exit_handle_fn fn);
 extern int32_t signals_block();
 extern int32_t signals_unblock();

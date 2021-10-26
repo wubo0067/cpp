@@ -20,307 +20,322 @@
 #define BUF_SIZE 1024
 
 struct option_def {
-	/** The option character */
-	const char val;
-	/** The name of the long option. */
-	const char* description;
-	/** Short description what the option does */
-	/** Name of the argument displayed in SYNOPSIS */
-	const char* arg_name;
-	/** Default value if not set */
-	const char* default_value;
+    /** The option character */
+    const char val;
+    /** The name of the long option. */
+    const char *description;
+    /** Short description what the option does */
+    /** Name of the argument displayed in SYNOPSIS */
+    const char *arg_name;
+    /** Default value if not set */
+    const char *default_value;
 };
 
 static const struct option_def option_definitions[] = {
-	// opt description     arg name       default value
-	{ 'c', "Configuration file to load.", "filename", CONFIG_FILENAME },
-	{ 'D', "Do not fork. Run in the foreground.", NULL, "run in the background" },
-	{ 'h', "Display this help message.", NULL, NULL },
-	{ 'i', "The IP address to listen to.", "IP", "all IP addresses IPv4 and IPv6" },
-	{ 'p', "API/Web port to use.", "port", "19999" },
-	{ 's', "Prefix for /proc and /sys (for containers).", "path", "no prefix" },
-	{ 't', "The internal clock of netdata.", "seconds", "1" }, { 'u', "Run as user.", "username", "netdata" },
-	{ 'v', "Print netdata version and exit.", NULL, NULL }, { 'V', "Print netdata version and exit.", NULL, NULL }
+    // opt description     arg name       default value
+    { 'c', "Configuration file to load.", "filename", CONFIG_FILENAME },
+    { 'D', "Do not fork. Run in the foreground.", NULL,
+      "run in the background" },
+    { 'h', "Display this help message.", NULL, NULL },
+    { 'i', "The IP address to listen to.", "IP",
+      "all IP addresses IPv4 and IPv6" },
+    { 'p', "API/Web port to use.", "port", "19999" },
+    { 's', "Prefix for /proc and /sys (for containers).", "path", "no prefix" },
+    { 't', "The internal clock of netdata.", "seconds", "1" },
+    { 'u', "Run as user.", "username", "netdata" },
+    { 'v', "Print netdata version and exit.", NULL, NULL },
+    { 'V', "Print netdata version and exit.", NULL, NULL }
 };
 
-static const char* pid_file = NULL;
+static const char *pid_file = NULL;
 
 typedef struct {
-	struct xmonitor_static_routine* root;
-	struct xmonitor_static_routine* last;
+    struct xmonitor_static_routine *root;
+    struct xmonitor_static_routine *last;
 } xmonitor_static_route_list_t;
 
-static xmonitor_static_route_list_t __xmonitor_static_route_list = { NULL, NULL };
+static xmonitor_static_route_list_t __xmonitor_static_route_list = { NULL,
+                                                                     NULL };
 
-void register_xmonitor_static_routine( struct xmonitor_static_routine* routine ) {
-	if ( __xmonitor_static_route_list.root == NULL ) {
-		__xmonitor_static_route_list.root = routine;
-		__xmonitor_static_route_list.last = routine;
-	}
-	else {
-		( __xmonitor_static_route_list.last )->next = routine;
-		__xmonitor_static_route_list.last           = routine;
-	}
+void register_xmonitor_static_routine(struct xmonitor_static_routine *routine)
+{
+    if (__xmonitor_static_route_list.root == NULL) {
+        __xmonitor_static_route_list.root = routine;
+        __xmonitor_static_route_list.last = routine;
+    } else {
+        (__xmonitor_static_route_list.last)->next = routine;
+        __xmonitor_static_route_list.last         = routine;
+    }
 }
 
 // killpid kills pid with SIGTERM.
-int killpid( pid_t pid ) {
-	int ret;
-	debug( "Request to kill pid %d", pid );
-	debug( "-----------------" );
+int killpid(pid_t pid)
+{
+    int ret;
+    debug("Request to kill pid %d", pid);
+    debug("-----------------");
 
-	errno = 0;
-	ret   = kill( pid, SIGTERM );
-	if ( ret == -1 ) {
-		switch ( errno ) {
-			case ESRCH:
-				// We wanted the process to exit so just let the caller handle.
-				return ret;
-			case EPERM:
-				error( "Cannot kill pid %d, but I do not have enough permissions.", pid );
-				break;
-			default:
-				error( "Cannot kill pid %d, but I received an error.", pid );
-				break;
-		}
-	}
-	return ret;
+    errno = 0;
+    ret   = kill(pid, SIGTERM);
+    if (ret == -1) {
+        switch (errno) {
+        case ESRCH:
+            // We wanted the process to exit so just let the caller handle.
+            return ret;
+        case EPERM:
+            error("Cannot kill pid %d, but I do not have enough permissions.",
+                  pid);
+            break;
+        default:
+            error("Cannot kill pid %d, but I received an error.", pid);
+            break;
+        }
+    }
+    return ret;
 }
 
-void help() {
-	int32_t num_opts = ( int32_t ) ARRAY_SIZE( option_definitions );
-	int32_t i;
-	int32_t max_len_arg = 0;
+void help()
+{
+    int32_t num_opts = (int32_t)ARRAY_SIZE(option_definitions);
+    int32_t i;
+    int32_t max_len_arg = 0;
 
-	// Compute maximum argument length
-	for ( i = 0; i < num_opts; i++ ) {
-		if ( option_definitions[i].arg_name ) {
-			int len_arg = ( int ) strlen( option_definitions[i].arg_name );
-			if ( len_arg > max_len_arg )
-				max_len_arg = len_arg;
-		}
-	}
+    // Compute maximum argument length
+    for (i = 0; i < num_opts; i++) {
+        if (option_definitions[i].arg_name) {
+            int len_arg = (int)strlen(option_definitions[i].arg_name);
+            if (len_arg > max_len_arg)
+                max_len_arg = len_arg;
+        }
+    }
 
-	if ( max_len_arg > 30 )
-		max_len_arg = 30;
-	if ( max_len_arg < 20 )
-		max_len_arg = 20;
+    if (max_len_arg > 30)
+        max_len_arg = 30;
+    if (max_len_arg < 20)
+        max_len_arg = 20;
 
-	fprintf( stderr, "%s",
-	    "\n"
-	    " ^\n"
-	    " |.-.   .-.   .-.   .-.   .  x-monitor                                         \n"
-	    " |   '-'   '-'   '-'   '-'   real-time performance monitoring, done right!   \n"
-	    " +----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+--->\n"
-	    "\n"
-	    " Copyright (C) 2021-2100, Calm.wu\n"
-	    " Released under GNU General Public License v3 or later.\n"
-	    " All rights reserved.\n" );
+    fprintf(
+        stderr, "%s",
+        "\n"
+        " ^\n"
+        " |.-.   .-.   .-.   .-.   .  x-monitor                                         \n"
+        " |   '-'   '-'   '-'   '-'   real-time performance monitoring, done right!   \n"
+        " +----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+--->\n"
+        "\n"
+        " Copyright (C) 2021-2100, Calm.wu\n"
+        " Released under GNU General Public License v3 or later.\n"
+        " All rights reserved.\n");
 
-	fprintf( stderr, " SYNOPSIS: x-monitor [options]\n" );
-	fprintf( stderr, "\n" );
-	fprintf( stderr, " Options:\n\n" );
+    fprintf(stderr, " SYNOPSIS: x-monitor [options]\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, " Options:\n\n");
 
-	// Output options description.
-	for ( i = 0; i < num_opts; i++ ) {
-		fprintf( stderr, "  -%c %-*s  %s", option_definitions[i].val, max_len_arg,
-		    option_definitions[i].arg_name ? option_definitions[i].arg_name : "", option_definitions[i].description );
-		if ( option_definitions[i].default_value ) {
-			fprintf( stderr, "\n   %c %-*s  Default: %s\n", ' ', max_len_arg, "", option_definitions[i].default_value );
-		}
-		else {
-			fprintf( stderr, "\n" );
-		}
-	}
+    // Output options description.
+    for (i = 0; i < num_opts; i++) {
+        fprintf(stderr, "  -%c %-*s  %s", option_definitions[i].val,
+                max_len_arg,
+                option_definitions[i].arg_name ?
+                    option_definitions[i].arg_name :
+                    "",
+                option_definitions[i].description);
+        if (option_definitions[i].default_value) {
+            fprintf(stderr, "\n   %c %-*s  Default: %s\n", ' ', max_len_arg, "",
+                    option_definitions[i].default_value);
+        } else {
+            fprintf(stderr, "\n");
+        }
+    }
 
-	fflush( stderr );
-	return;
+    fflush(stderr);
+    return;
 }
 
-static void main_cleanup_and_exit( int32_t UNUSED( signo ) ) {
+static void main_cleanup_and_exit(int32_t UNUSED(signo))
+{
+    if (pid_file != NULL && pid_file[0] != '\0') {
+        info("EXIT: removing pid file '%s'", pid_file);
+        if (unlink(pid_file) != 0)
+            error("EXIT: cannot remove pid file '%s'", pid_file);
+    }
 
-	if ( pid_file != NULL && pid_file[0] != '\0' ) {
-		info( "EXIT: removing pid file '%s'", pid_file );
-		if ( unlink( pid_file ) != 0 )
-			error( "EXIT: cannot remove pid file '%s'", pid_file );
-	}
+    struct xmonitor_static_routine *routine = __xmonitor_static_route_list.root;
+    struct xmonitor_static_routine *next    = NULL;
+    while (routine) {
+        next = routine->next;
+        if (routine->enabled && routine->stop_routine) {
+            routine->stop_routine();
+        }
+        debug("Routine '%s' has been Cleaned up.", routine->name);
+        free(routine);
+        routine = next;
+    }
 
-	struct xmonitor_static_routine* routine = __xmonitor_static_route_list.root;
-	struct xmonitor_static_routine* next    = NULL;
-	while ( routine ) {
-		next = routine->next;
-		if ( routine->enabled && routine->stop_routine ) {
-			routine->stop_routine();
-		}
-		debug( "Routine '%s' has been Cleaned up.", routine->name );
-		free( routine );
-		routine = next;
-	}
-
-	// free config
-	appconfig_destroy();
-	// free log
-	log_fini();
+    // free config
+    appconfig_destroy();
+    // free log
+    log_fini();
 }
 
-int32_t main( int32_t argc, char* argv[] ) {
-	char UNUSED( buf[BUF_SIZE] ) = { 0 };
-	pid_t UNUSED( child_pid )    = 0;
-	int32_t dont_fork            = 0;
-	int32_t config_loaded        = 0;
-	int32_t ret                  = 0;
+int32_t main(int32_t argc, char *argv[])
+{
+    char    UNUSED(buf[BUF_SIZE]) = { 0 };
+    pid_t   UNUSED(child_pid)     = 0;
+    int32_t dont_fork             = 0;
+    int32_t config_loaded         = 0;
+    int32_t ret                   = 0;
 
-	// parse options
-	{
-		int32_t opts_count = ( int32_t ) ARRAY_SIZE( option_definitions );
-		char opt_str[( opts_count * 2 ) + 1];
+    // parse options
+    {
+        int32_t opts_count = (int32_t)ARRAY_SIZE(option_definitions);
+        char    opt_str[(opts_count * 2) + 1];
 
-		int32_t opt_str_i = 0;
-		for ( int32_t i = 0; i < opts_count; i++ ) {
-			opt_str[opt_str_i] = option_definitions[i].val;
-			opt_str_i++;
-			if ( option_definitions[i].arg_name ) {
-				opt_str[opt_str_i++] = ':';
-				opt_str_i++;
-			}
-		}
+        int32_t opt_str_i = 0;
+        for (int32_t i = 0; i < opts_count; i++) {
+            opt_str[opt_str_i] = option_definitions[i].val;
+            opt_str_i++;
+            if (option_definitions[i].arg_name) {
+                opt_str[opt_str_i++] = ':';
+                opt_str_i++;
+            }
+        }
 
-		// terminate optstring
-		opt_str[opt_str_i]          = '\0';
-		opt_str[( opts_count * 2 )] = '\0';
+        // terminate optstring
+        opt_str[opt_str_i]        = '\0';
+        opt_str[(opts_count * 2)] = '\0';
 
-		int32_t opt = 0;
+        int32_t opt = 0;
 
-		while ( ( opt = getopt( argc, argv, opt_str ) ) != -1 ) {
-			switch ( opt ) {
-				case 'c':
-					if ( appconfig_load( optarg ) < 0 ) {
-						return -1;
-					}
-					else {
-						// 初始化log
-						const char* log_config_file = appconfig_get_str( "application.log_config_file" );
-						if ( log_init( log_config_file ) < 0 ) {
-							return -1;
-						}
-						config_loaded = 1;
-					}
-					break;
-				case 'D':
-					dont_fork = 1;
-					break;
-				case 'V':
-				case 'v':
-					fprintf( stderr, "x-monitor Version: %d.%d", XMonitor_VERSION_MAJOR, XMonitor_VERSION_MINOR );
-					return 0;
-				case 'h':
-				default:
-					help();
-					return 0;
-			}
-		}
-	}
+        while ((opt = getopt(argc, argv, opt_str)) != -1) {
+            switch (opt) {
+            case 'c':
+                if (appconfig_load(optarg) < 0) {
+                    return -1;
+                } else {
+                    // 初始化log
+                    const char *log_config_file =
+                        appconfig_get_str("application.log_config_file");
+                    if (log_init(log_config_file) < 0) {
+                        return -1;
+                    }
+                    config_loaded = 1;
+                }
+                break;
+            case 'D':
+                dont_fork = 1;
+                break;
+            case 'V':
+            case 'v':
+                fprintf(stderr, "x-monitor Version: %d.%d",
+                        XMonitor_VERSION_MAJOR, XMonitor_VERSION_MINOR);
+                return 0;
+            case 'h':
+            default:
+                help();
+                return 0;
+            }
+        }
+    }
 
-	if ( !config_loaded ) {
-		help();
-	}
+    if (!config_loaded) {
+        help();
+    }
 
-	// 信号初始化
-	signals_block();
-	signals_init();
+    // 信号初始化
+    signals_block();
+    signals_init();
 
-	info( "---start mypopen running pid: %d---", getpid() );
+    info("---start mypopen running pid: %d---", getpid());
 
-	// INIT routines
-	struct xmonitor_static_routine* routine = __xmonitor_static_route_list.root;
-	for ( ; routine; routine = routine->next ) {
-		// 判断是否enable
-		if ( routine->config_name ) {
-			routine->enabled = appconfig_get_bool( routine->config_name );
-		}
+    // INIT routines
+    struct xmonitor_static_routine *routine = __xmonitor_static_route_list.root;
+    for (; routine; routine = routine->next) {
+        // 判断是否enable
+        if (routine->config_name) {
+            routine->enabled = appconfig_get_bool(routine->config_name);
+        }
 
-		if ( routine->enabled && NULL != routine->init_routine ) {
-			ret = routine->init_routine();
-			if ( 0 == ret ) {
-				info( "init routine '%s' successed", routine->name );
-			}
-			else {
-				error( "init routine '%s' failed", routine->name );
-			}
-		}
-		else {
-			debug( "xmonitor routine '%s' is disabled.", routine->name );
-		}
-	}
+        if (routine->enabled && NULL != routine->init_routine) {
+            ret = routine->init_routine();
+            if (0 == ret) {
+                info("init routine '%s' successed", routine->name);
+            } else {
+                error("init routine '%s' failed", routine->name);
+            }
+        } else {
+            debug("xmonitor routine '%s' is disabled.", routine->name);
+        }
+    }
 
-	// 守护进程
-	pid_file         = appconfig_get_str( "application.pid_file" );
-	const char* user = appconfig_get_str( "application.run_as_user" );
-	become_daemon( dont_fork, pid_file, user );
+    // 守护进程
+    pid_file         = appconfig_get_str("application.pid_file");
+    const char *user = appconfig_get_str("application.run_as_user");
+    become_daemon(dont_fork, pid_file, user);
 
-	// START routines
-	routine = __xmonitor_static_route_list.root;
-	for ( ; routine; routine = routine->next ) {
-		if ( routine->enabled && NULL != routine->start_routine ) {
-			ret = pthread_create( &routine->thread_id, NULL, routine->start_routine, NULL );
-			if ( unlikely( 0 != ret ) ) {
-				error( "failed to create new thread for %s. pthread_create() failed with code %d", routine->name, ret );
-			}
-			else {
-				info( "successed to create new thread for %s.", routine->name );
-			}
-			routine = routine->next;
-		}
-	}
+    // START routines
+    routine = __xmonitor_static_route_list.root;
+    for (; routine; routine = routine->next) {
+        if (routine->enabled && NULL != routine->start_routine) {
+            ret = pthread_create(&routine->thread_id, NULL,
+                                 routine->start_routine, NULL);
+            if (unlikely(0 != ret)) {
+                error(
+                    "failed to create new thread for %s. pthread_create() failed with code %d",
+                    routine->name, ret);
+            } else {
+                info("successed to create new thread for %s.", routine->name);
+            }
+            routine = routine->next;
+        }
+    }
 
-	// const char* cmd = appconfig_get_str( "plugins.timer_shell" );
-	// if ( cmd == NULL ) {
-	// 	error( "plugins.timer_shell is not set." );
-	// 	return 1;
-	// }
+    // const char* cmd = appconfig_get_str( "plugins.timer_shell" );
+    // if ( cmd == NULL ) {
+    // 	error( "plugins.timer_shell is not set." );
+    // 	return 1;
+    // }
 
-	// FILE* child_fp = mypopen( cmd, &child_pid );
-	// if ( unlikely( !child_fp ) ) {
-	// 	error( "Cannot popen(\"%s\", \"r\").", cmd );
-	// 	return 0;
-	// }
+    // FILE* child_fp = mypopen( cmd, &child_pid );
+    // if ( unlikely( !child_fp ) ) {
+    // 	error( "Cannot popen(\"%s\", \"r\").", cmd );
+    // 	return 0;
+    // }
 
-	// debug( "connected to '%s' running on pid %d", cmd, child_pid );
+    // debug( "connected to '%s' running on pid %d", cmd, child_pid );
 
-	// while ( 1 ) {
-	// 	if ( fgets( buf, BUF_SIZE, child_fp ) == NULL ) {
-	// 		if ( feof( child_fp ) ) {
-	// 			info( "fgets() return EOF." );
-	// 			break;
-	// 		}
-	// 		else if ( ferror( child_fp ) ) {
-	// 			info( "fgets() return error." );
-	// 			break;
-	// 		}
-	// 		else {
-	// 			info( "fgets() return unknown." );
-	// 		}
-	// 	}
-	// 	buf[strlen(buf) - 1] = '\0';
-	// 	info( "recv: [%s]", buf );
-	// }
+    // while ( 1 ) {
+    // 	if ( fgets( buf, BUF_SIZE, child_fp ) == NULL ) {
+    // 		if ( feof( child_fp ) ) {
+    // 			info( "fgets() return EOF." );
+    // 			break;
+    // 		}
+    // 		else if ( ferror( child_fp ) ) {
+    // 			info( "fgets() return error." );
+    // 			break;
+    // 		}
+    // 		else {
+    // 			info( "fgets() return unknown." );
+    // 		}
+    // 	}
+    // 	buf[strlen(buf) - 1] = '\0';
+    // 	info( "recv: [%s]", buf );
+    // }
 
-	// info( "'%s' (pid %d) disconnected.", cmd, child_pid );
+    // info( "'%s' (pid %d) disconnected.", cmd, child_pid );
 
-	// killpid( child_pid );
+    // killpid( child_pid );
 
-	// int32_t child_worker_ret_code = mypclose( child_fp, child_pid );
-	// if ( likely( child_worker_ret_code == 0 ) ) {
-	// 	info( "child worker exit normally." );
-	// }
-	// else {
-	// 	error( "child worker exit abnormally." );
-	// }
+    // int32_t child_worker_ret_code = mypclose( child_fp, child_pid );
+    // if ( likely( child_worker_ret_code == 0 ) ) {
+    // 	info( "child worker exit normally." );
+    // }
+    // else {
+    // 	error( "child worker exit abnormally." );
+    // }
 
-	// 解除信号阻塞
-	signals_unblock();
-	// 信号处理
-	signals_handle( main_cleanup_and_exit );
+    // 解除信号阻塞
+    signals_unblock();
+    // 信号处理
+    signals_handle(main_cleanup_and_exit);
 
-	return 0;
+    return 0;
 }

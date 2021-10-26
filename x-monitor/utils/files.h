@@ -9,5 +9,5 @@
 
 #include "common.h"
 
-extern int32_t read_file_to_int64( const char* file_name, int64_t* number );
-extern int32_t write_int64_to_file( const char* file_name, int64_t number );
+extern int32_t read_file_to_int64(const char *file_name, int64_t *number);
+extern int32_t write_int64_to_file(const char *file_name, int64_t number);

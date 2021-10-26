@@ -9,4 +9,4 @@
 
 #include "common.h"
 
-extern time_t now_realtime_sec( void );
+extern time_t now_realtime_sec(void);

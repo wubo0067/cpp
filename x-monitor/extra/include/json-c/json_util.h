@@ -71,7 +71,8 @@ JSON_EXPORT struct json_object *json_object_from_fd(int fd);
  *
  * Returns -1 if something fails.  See json_util_get_last_err() for details.
  */
-JSON_EXPORT int json_object_to_file(const char *filename, struct json_object *obj);
+JSON_EXPORT int json_object_to_file(const char *        filename,
+                                    struct json_object *obj);
 
 /**
  * Open and truncate the given file, creating it if necessary, then
@@ -79,7 +80,8 @@ JSON_EXPORT int json_object_to_file(const char *filename, struct json_object *ob
  *
  * Returns -1 if something fails.  See json_util_get_last_err() for details.
  */
-JSON_EXPORT int json_object_to_file_ext(const char *filename, struct json_object *obj, int flags);
+JSON_EXPORT int json_object_to_file_ext(const char *        filename,
+                                        struct json_object *obj, int flags);
 
 /**
  * Convert the json_object to a string and write it to the file descriptor.
