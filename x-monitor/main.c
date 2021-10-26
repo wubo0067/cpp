@@ -16,6 +16,7 @@
 #include "utils/signals.h"
 
 #include "appconfig/appconfig.h"
+#include "plugins.d/plugins_d.h"
 
 #define BUF_SIZE 1024
 
@@ -49,23 +50,28 @@ static const struct option_def option_definitions[] = {
 
 static const char *pid_file = NULL;
 
-typedef struct {
+struct xmonitor_static_routine_list {
     struct xmonitor_static_routine *root;
     struct xmonitor_static_routine *last;
-} xmonitor_static_route_list_t;
+    int32_t                         static_routine_count;
+};
 
-static xmonitor_static_route_list_t __xmonitor_static_route_list = { NULL,
-                                                                     NULL };
+static struct xmonitor_static_routine_list __xmonitor_static_routine_list = {
+    NULL, NULL, 0
+};
 
 void register_xmonitor_static_routine(struct xmonitor_static_routine *routine)
 {
-    if (__xmonitor_static_route_list.root == NULL) {
-        __xmonitor_static_route_list.root = routine;
-        __xmonitor_static_route_list.last = routine;
+    if (__xmonitor_static_routine_list.root == NULL) {
+        __xmonitor_static_routine_list.root = routine;
+        __xmonitor_static_routine_list.last = routine;
     } else {
-        (__xmonitor_static_route_list.last)->next = routine;
-        __xmonitor_static_route_list.last         = routine;
+        __xmonitor_static_routine_list.last->next = routine;
+        __xmonitor_static_routine_list.last       = routine;
     }
+    ++__xmonitor_static_routine_list.static_routine_count;
+    fprintf(stdout, "[%d] static_routine: '%s' registered\n",
+            __xmonitor_static_routine_list.static_routine_count, routine->name);
 }
 
 // killpid kills pid with SIGTERM.
@@ -158,16 +164,13 @@ static void main_cleanup_and_exit(int32_t UNUSED(signo))
             error("EXIT: cannot remove pid file '%s'", pid_file);
     }
 
-    struct xmonitor_static_routine *routine = __xmonitor_static_route_list.root;
-    struct xmonitor_static_routine *next    = NULL;
-    while (routine) {
-        next = routine->next;
+    struct xmonitor_static_routine *routine =
+        __xmonitor_static_routine_list.root;
+    for (; routine; routine = routine->next) {
         if (routine->enabled && routine->stop_routine) {
             routine->stop_routine();
+            debug("Routine '%s' has been Cleaned up.", routine->name);
         }
-        debug("Routine '%s' has been Cleaned up.", routine->name);
-        free(routine);
-        routine = next;
     }
 
     // free config
@@ -247,7 +250,8 @@ int32_t main(int32_t argc, char *argv[])
     info("---start mypopen running pid: %d---", getpid());
 
     // INIT routines
-    struct xmonitor_static_routine *routine = __xmonitor_static_route_list.root;
+    struct xmonitor_static_routine *routine =
+        __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
         // 判断是否enable
         if (routine->config_name) {
@@ -257,12 +261,14 @@ int32_t main(int32_t argc, char *argv[])
         if (routine->enabled && NULL != routine->init_routine) {
             ret = routine->init_routine();
             if (0 == ret) {
-                info("init routine '%s' successed", routine->name);
+                info("init xmonitor-static-routine '%s' successed",
+                     routine->name);
             } else {
-                error("init routine '%s' failed", routine->name);
+                error("init xmonitor-static-routine '%s' failed",
+                      routine->name);
             }
         } else {
-            debug("xmonitor routine '%s' is disabled.", routine->name);
+            debug("xmonitor-static-routine '%s' is disabled.", routine->name);
         }
     }
 
@@ -272,19 +278,20 @@ int32_t main(int32_t argc, char *argv[])
     become_daemon(dont_fork, pid_file, user);
 
     // START routines
-    routine = __xmonitor_static_route_list.root;
+    routine = __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
         if (routine->enabled && NULL != routine->start_routine) {
-            ret = pthread_create(&routine->thread_id, NULL,
+            ret = pthread_create(routine->thread_id, NULL,
                                  routine->start_routine, NULL);
             if (unlikely(0 != ret)) {
                 error(
-                    "failed to create new thread for %s. pthread_create() failed with code %d",
+                    "xmonitor-static-routine '%s' pthread_create() failed with code %d",
                     routine->name, ret);
             } else {
-                info("successed to create new thread for %s.", routine->name);
+                info(
+                    "xmonitor-static-routine '%s' successed to create new thread.",
+                    routine->name);
             }
-            routine = routine->next;
         }
     }
 

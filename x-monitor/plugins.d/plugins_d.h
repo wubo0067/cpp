@@ -10,5 +10,5 @@
 #include "utils/common.h"
 
 extern int32_t pluginsd_routine_init();
-extern int32_t pluginsd_routine_start(void *arg);
-extern void pluginsd_routine_stop();
+extern void   *pluginsd_routine_start(void *arg);
+extern void    pluginsd_routine_stop();

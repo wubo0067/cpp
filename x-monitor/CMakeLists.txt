@@ -50,7 +50,7 @@ add_subdirectory(utils)
 add_subdirectory(test/construct_init)
 
 # 子目录源代码
-set(PLUGINS_FILES
+set(PLUGINSD_FILES
         plugins.d/plugins_d.c
         plugins.d/plugins_d.h
         )
