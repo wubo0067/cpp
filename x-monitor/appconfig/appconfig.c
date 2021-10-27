@@ -79,18 +79,17 @@ void appconfig_destroy()
 
 // ----------------------------------------------------------------------------
 
-const char *appconfig_get_str(const char *key, const char * def)
+const char *appconfig_get_str(const char *key, const char *def)
 {
     if (unlikely(!key)) {
-        return NULL;
+        return def;
     }
 
-    const char *str = NULL;
+    const char *str = def;
     pthread_rwlock_rdlock(&__appconfig.rw_lock);
     if (likely(__appconfig.loaded)) {
         if (!config_lookup_string(&__appconfig.cfg, key, &str)) {
             warn("config_lookup_string failed: %s", key);
-            str = def;
         }
     }
     pthread_rwlock_unlock(&__appconfig.rw_lock);
@@ -103,12 +102,11 @@ int32_t appconfig_get_bool(const char *key, int32_t def)
         return def;
     }
 
-    int32_t b;
+    int32_t b = def;
     pthread_rwlock_rdlock(&__appconfig.rw_lock);
     if (likely(__appconfig.loaded)) {
         if (!config_lookup_bool(&__appconfig.cfg, key, &b)) {
             warn("config_lookup_bool failed: %s", key);
-            b = def;
         }
     }
     pthread_rwlock_unlock(&__appconfig.rw_lock);
@@ -121,12 +119,75 @@ int32_t appconfig_get_int(const char *key, int32_t def)
         return def;
     }
 
-    int32_t i;
+    int32_t i = def;
     pthread_rwlock_rdlock(&__appconfig.rw_lock);
     if (likely(__appconfig.loaded)) {
         if (!config_lookup_int(&__appconfig.cfg, key, &i)) {
             warn("config_lookup_int failed: %s", key);
-            i = def;
+        }
+    }
+    pthread_rwlock_unlock(&__appconfig.rw_lock);
+    return i;
+}
+
+const char *appconfig_get_member_str(const char *path, const char *key,
+                                     const char *def)
+{
+    if (unlikely(!path || !key)) {
+        return def;
+    }
+
+    const char *str = def;
+    pthread_rwlock_rdlock(&__appconfig.rw_lock);
+
+    if (likely(__appconfig.loaded)) {
+        config_setting_t *setting = config_lookup(&__appconfig.cfg, path);
+        if (setting) {
+            if (!config_setting_lookup_string(setting, key, &str)) {
+                warn("config_setting_lookup_string failed: %s", key);
+            }
+        }
+    }
+
+    pthread_rwlock_unlock(&__appconfig.rw_lock);
+    return str;
+}
+
+int32_t appconfig_get_member_bool(const char *path, const char *key,
+                                  int32_t def)
+{
+    if (unlikely(!path || !key)) {
+        return def;
+    }
+
+    int32_t b = def;
+    pthread_rwlock_rdlock(&__appconfig.rw_lock);
+    if (likely(__appconfig.loaded)) {
+        config_setting_t *setting = config_lookup(&__appconfig.cfg, path);
+        if (setting) {
+            if (!config_setting_lookup_bool(setting, key, &b)) {
+                warn("config_setting_lookup_bool failed: %s", key);
+            }
+        }
+    }
+    pthread_rwlock_unlock(&__appconfig.rw_lock);
+    return b;
+}
+
+int32_t appconfig_get_member_int(const char *path, const char *key, int32_t def)
+{
+    if (unlikely(!path || !key)) {
+        return def;
+    }
+
+    int32_t i = def;
+    pthread_rwlock_rdlock(&__appconfig.rw_lock);
+    if (likely(__appconfig.loaded)) {
+        config_setting_t *setting = config_lookup(&__appconfig.cfg, path);
+        if (setting) {
+            if (!config_setting_lookup_int(setting, key, &i)) {
+                warn("config_setting_lookup_bool failed: %s", key);
+            }
         }
     }
     pthread_rwlock_unlock(&__appconfig.rw_lock);

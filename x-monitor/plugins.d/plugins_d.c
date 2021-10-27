@@ -19,7 +19,6 @@
 #define PLUGINSD_FILE_SUFFIX_LEN strlen(PLUGINSD_FILE_SUFFIX)
 
 struct external_plugin {
-    char id[CONFIG_NAME_MAX + 1];
     char file_name[FILENAME_MAX + 1];
     char full_file_name[FILENAME_MAX + 1];
     char cmd[EXTERNAL_PLUGIN_CMD_LINE_MAX + 1]; // the command that it executes
@@ -66,7 +65,7 @@ __attribute__((constructor)) static void pluginsd_register_routine()
     register_xmonitor_static_routine(pr);
 }
 
-static void external_plugin_cleanup(void *data)
+static void external_plugin_thread_worker_cleanup(void *data)
 {
     for (struct external_plugin *p = __pluginsd.external_plugins_root; p;
          p                         = p->next) {
@@ -148,8 +147,9 @@ void *pluginsd_routine_start(void *arg)
             char external_plugin_cfgname[CONFIG_NAME_MAX + 1];
             snprintf(external_plugin_cfgname, CONFIG_NAME_MAX, "pluginsd.%.*s",
                      (int)(len - PLUGINSD_FILE_SUFFIX_LEN), entry->d_name);
-            int32_t enabled = appconfig_get_bool(external_plugin_cfgname, 0);
 
+            int32_t enabled =
+                appconfig_get_member_bool(external_plugin_cfgname, "enable", 0);
             if (unlikely(!enabled)) {
                 debug("external plugin config '%s' is not enabled",
                       external_plugin_cfgname);
@@ -173,8 +173,6 @@ void *pluginsd_routine_start(void *arg)
                 ep = (struct external_plugin *)calloc(
                     1, sizeof(struct external_plugin));
 
-                snprintf(ep->id, CONFIG_NAME_MAX, "plugin_%s",
-                         external_plugin_cfgname);
                 strncpy(ep->file_name, entry->d_name, FILENAME_MAX);
                 // -Wformat-truncation=
                 snprintf(ep->full_file_name, FILENAME_MAX, "%s/%s",
@@ -189,16 +187,18 @@ void *pluginsd_routine_start(void *arg)
 
                 ep->enabled      = enabled;
                 ep->start_time   = now_realtime_sec();
-                ep->update_every = appconfig_get_int(ep->id, 5);
+                ep->update_every = appconfig_get_member_int(
+                    external_plugin_cfgname, "update_every", 5);
 
                 // 生成执行命令
                 char *def = "";
                 snprintf(ep->cmd, EXTERNAL_PLUGIN_CMD_LINE_MAX, "exec %s %d %s",
-                         ep->full_file_name, ep->update_every, "");
+                         ep->full_file_name, ep->update_every,
+                         appconfig_get_member_str(external_plugin_cfgname,
+                                                  "command_options", def));
 
-                debug(
-                    "plugin id:'%s' file_name:'%s' full_file_name:'%s', cmd:'%s'",
-                    ep->id, ep->file_name, ep->full_file_name, ep->cmd);
+                debug("file_name:'%s' full_file_name:'%s', cmd:'%s'",
+                      ep->file_name, ep->full_file_name, ep->cmd);
 
                 // add header
                 if (likely(__pluginsd.external_plugins_root)) {
@@ -227,8 +227,8 @@ void pluginsd_routine_stop()
          p                         = p->next) {
         p->exit_flag = 1;
         // 为了触发pthread_cleanup的注册函数，执行killpid
-        pthread_cancel(p->thread_id);
-        pthread_join(p->thread_id, NULL);
+        //pthread_cancel(p->thread_id);
+        //pthread_join(p->thread_id, NULL);
     }
     debug("routine 'Pluginsd' has completely stopped");
 }

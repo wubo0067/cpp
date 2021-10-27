@@ -17,6 +17,13 @@ extern void    appconfig_destroy();
 // extern void appconfig_unlock();
 
 // ---------------------------------------------------------
-extern const char *appconfig_get_str(const char *key, const char * def);
+extern const char *appconfig_get_str(const char *key, const char *def);
 extern int32_t     appconfig_get_bool(const char *key, int32_t def);
 extern int32_t     appconfig_get_int(const char *key, int32_t def);
+
+extern const char *appconfig_get_member_str(const char *path, const char *key,
+                                            const char *def);
+extern int32_t     appconfig_get_member_bool(const char *path, const char *key,
+                                             int32_t def);
+extern int32_t     appconfig_get_member_int(const char *path, const char *key,
+                                            int32_t def);
