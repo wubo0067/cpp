@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-15 14:41:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-27 16:57:31
+ * @Last Modified time: 2021-10-27 17:44:56
  */
 
 #include "plugins_d.h"
@@ -85,7 +85,7 @@ static void external_plugin_thread_cleanup(void *arg)
 
 static void *external_plugin_thread_worker(void *arg)
 {
-    struct external_plugin *plugin = (struct external_plugin *)arg;
+    struct external_plugin *ep = (struct external_plugin *)arg;
 
     // 设置本线程取消动作的执行时机，type由两种取值：PTHREAD_CANCEL_DEFFERED和PTHREAD_CANCEL_ASYCHRONOUS，
     // 仅当Cancel状态为Enable时有效，分别表示收到信号后继续运行至下一个取消点再退出和立即执行取消动作（退出）；
@@ -98,41 +98,54 @@ static void *external_plugin_thread_worker(void *arg)
     if (pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL) != 0)
         error("cannot set pthread cancel state to ENABLE.");
 
-    // 执行扩展插件
-    FILE *child_fp = mypopen(plugin->cmd, &plugin->child_pid);
-    if (unlikely(!child_fp)) {
-        error("Cannot popen(\"%s\", \"r\").", plugin->cmd);
-        return 0;
-    }
-
     // 保证pthread_cancel会执行external_plugin_thread_cleanup，杀掉子进程
     pthread_cleanup_push(external_plugin_thread_cleanup, arg);
 
-    debug("connected to '%s' running on pid %d", plugin->cmd,
-          plugin->child_pid);
-    char buf[STDOUT_LINE_BUF_SIZE] = { 0 };
-
-    while (!plugin->exit_flag) {
-        if (fgets(buf, STDOUT_LINE_BUF_SIZE, child_fp) == NULL) {
-            if (feof(child_fp)) {
-                info("fgets() return EOF.");
-                break;
-            } else if (ferror(child_fp)) {
-                info("fgets() return error.");
-                break;
-            } else {
-                info("fgets() return unknown.");
-                break;
-            }
+    while (!ep->enabled) {
+        // 执行扩展插件
+        FILE *child_fp = mypopen(ep->cmd, &ep->child_pid);
+        if (unlikely(!child_fp)) {
+            error("Cannot popen(\"%s\", \"r\").", ep->cmd);
+            break;
         }
-        buf[strlen(buf) - 1] = '\0';
-        info("from '%s' recv: [%s]", plugin->config_name, buf);
+
+        debug("connected to '%s' running on pid %d", ep->cmd,
+              ep->child_pid);
+        char buf[STDOUT_LINE_BUF_SIZE] = { 0 };
+
+        while (1) {
+            // 读取plugin的标准输出内容
+            if (fgets(buf, STDOUT_LINE_BUF_SIZE, child_fp) == NULL) {
+                if (feof(child_fp)) {
+                    info("fgets() return EOF.");
+                    break;
+                } else if (ferror(child_fp)) {
+                    info("fgets() return error.");
+                    break;
+                } else {
+                    info("fgets() return unknown.");
+                    break;
+                }
+            }
+            buf[strlen(buf) - 1] = '\0';
+            info("from '%s' recv: [%s]", ep->config_name, buf);
+        }
+
+        error(
+            "'%s' (pid %d) disconnected after successful data collections (ENDs).",
+            ep->config_name, ep->child_pid);
+
+        kill_pid(ep->child_pid);
+
+        int32_t child_exit_code = mypclose(child_fp, ep->child_pid);
+        info("from '%s' exit with code %d", ep->config_name,
+             child_exit_code);
+
+        ep->child_pid = 0;
+        if (unlikely(!ep->enabled))
+            // 异常退出，如果配置也标记不可用，则退出线程，否则重启plugin
+            break;        
     }
-
-    kill_pid(plugin->child_pid);
-
-    int32_t child_exit_code = mypclose(child_fp, plugin->child_pid);
-    info("from '%s' exit with code %d", plugin->config_name, child_exit_code);
 
     pthread_cleanup_pop(1);
 
