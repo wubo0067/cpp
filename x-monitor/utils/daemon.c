@@ -200,3 +200,28 @@ int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user)
     }
     return 0;
 }
+
+// kill_pid kills pid with SIGTERM.
+int32_t kill_pid(pid_t pid)
+{
+    int32_t ret;
+    debug("Request to kill pid %d", pid);
+
+    errno = 0;
+    ret   = kill(pid, SIGTERM);
+    if (ret == -1) {
+        switch (errno) {
+        case ESRCH:
+            // We wanted the process to exit so just let the caller handle.
+            return ret;
+        case EPERM:
+            error("Cannot kill pid %d, but I do not have enough permissions.",
+                  pid);
+            break;
+        default:
+            error("Cannot kill pid %d, but I received an error.", pid);
+            break;
+        }
+    }
+    return ret;
+}

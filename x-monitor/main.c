@@ -74,32 +74,6 @@ void register_xmonitor_static_routine(struct xmonitor_static_routine *routine)
             __xmonitor_static_routine_list.static_routine_count, routine->name);
 }
 
-// killpid kills pid with SIGTERM.
-int killpid(pid_t pid)
-{
-    int ret;
-    debug("Request to kill pid %d", pid);
-    debug("-----------------");
-
-    errno = 0;
-    ret   = kill(pid, SIGTERM);
-    if (ret == -1) {
-        switch (errno) {
-        case ESRCH:
-            // We wanted the process to exit so just let the caller handle.
-            return ret;
-        case EPERM:
-            error("Cannot kill pid %d, but I do not have enough permissions.",
-                  pid);
-            break;
-        default:
-            error("Cannot kill pid %d, but I received an error.", pid);
-            break;
-        }
-    }
-    return ret;
-}
-
 void help()
 {
     int32_t num_opts = (int32_t)ARRAY_SIZE(option_definitions);
@@ -294,50 +268,6 @@ int32_t main(int32_t argc, char *argv[])
             }
         }
     }
-
-    // const char* cmd = appconfig_get_str( "plugins.timer_shell" );
-    // if ( cmd == NULL ) {
-    // 	error( "plugins.timer_shell is not set." );
-    // 	return 1;
-    // }
-
-    // FILE* child_fp = mypopen( cmd, &child_pid );
-    // if ( unlikely( !child_fp ) ) {
-    // 	error( "Cannot popen(\"%s\", \"r\").", cmd );
-    // 	return 0;
-    // }
-
-    // debug( "connected to '%s' running on pid %d", cmd, child_pid );
-
-    // while ( 1 ) {
-    // 	if ( fgets( buf, BUF_SIZE, child_fp ) == NULL ) {
-    // 		if ( feof( child_fp ) ) {
-    // 			info( "fgets() return EOF." );
-    // 			break;
-    // 		}
-    // 		else if ( ferror( child_fp ) ) {
-    // 			info( "fgets() return error." );
-    // 			break;
-    // 		}
-    // 		else {
-    // 			info( "fgets() return unknown." );
-    // 		}
-    // 	}
-    // 	buf[strlen(buf) - 1] = '\0';
-    // 	info( "recv: [%s]", buf );
-    // }
-
-    // info( "'%s' (pid %d) disconnected.", cmd, child_pid );
-
-    // killpid( child_pid );
-
-    // int32_t child_worker_ret_code = mypclose( child_fp, child_pid );
-    // if ( likely( child_worker_ret_code == 0 ) ) {
-    // 	info( "child worker exit normally." );
-    // }
-    // else {
-    // 	error( "child worker exit abnormally." );
-    // }
 
     // 解除信号阻塞
     signals_unblock();
