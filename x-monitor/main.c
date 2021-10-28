@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-21 14:59:14
+ * @Last Modified time: 2021-10-28 15:22:28
  */
 
 #include "config.h"
@@ -14,6 +14,7 @@
 #include "utils/log.h"
 #include "utils/popen.h"
 #include "utils/signals.h"
+#include "utils/consts.h"
 
 #include "appconfig/appconfig.h"
 #include "plugins.d/plugins_d.h"
@@ -48,7 +49,7 @@ static const struct option_def option_definitions[] = {
     { 'V', "Print netdata version and exit.", NULL, NULL }
 };
 
-static const char *pid_file = NULL;
+static char pid_file[PID_FILENAME_MAX + 1] = "";
 
 struct xmonitor_static_routine_list {
     struct xmonitor_static_routine *root;
@@ -130,27 +131,31 @@ void help()
     return;
 }
 
-static void main_cleanup_and_exit(int32_t UNUSED(signo))
+static void on_signal(int32_t signo, enum signal_action_mode mode)
 {
-    if (pid_file != NULL && pid_file[0] != '\0') {
-        info("EXIT: removing pid file '%s'", pid_file);
-        if (unlink(pid_file) != 0)
-            error("EXIT: cannot remove pid file '%s'", pid_file);
-    }
-
-    struct xmonitor_static_routine *routine =
-        __xmonitor_static_routine_list.root;
-    for (; routine; routine = routine->next) {
-        if (routine->enabled && routine->stop_routine) {
-            routine->stop_routine();
-            debug("Routine '%s' has been Cleaned up.", routine->name);
+    if (E_SIGNAL_EXIT_CLEANLY == mode) {
+        if (pid_file != NULL && pid_file[0] != '\0') {
+            info("EXIT: removing pid file '%s'", pid_file);
+            if (unlink(pid_file) != 0)
+                error("EXIT: cannot remove pid file '%s'", pid_file);
         }
-    }
 
-    // free config
-    appconfig_destroy();
-    // free log
-    log_fini();
+        struct xmonitor_static_routine *routine =
+            __xmonitor_static_routine_list.root;
+        for (; routine; routine = routine->next) {
+            if (routine->enabled && routine->stop_routine) {
+                routine->stop_routine();
+                debug("Routine '%s' has been Cleaned up.", routine->name);
+            }
+        }
+
+        // free config
+        appconfig_destroy();
+        // free log
+        log_fini();
+    } else if (E_SIGNAL_RELOADCONFIG == mode) {
+        appconfig_reload();
+    }
 }
 
 int32_t main(int32_t argc, char *argv[])
@@ -247,7 +252,9 @@ int32_t main(int32_t argc, char *argv[])
     }
 
     // 守护进程
-    pid_file         = appconfig_get_str("application.pid_file", NULL);
+    strncpy(pid_file,
+            appconfig_get_str("application.pid_file", DEFAULT_PIDFILE),
+            PID_FILENAME_MAX);
     const char *user = appconfig_get_str("application.run_as_user", NULL);
     become_daemon(dont_fork, pid_file, user);
 
@@ -272,7 +279,7 @@ int32_t main(int32_t argc, char *argv[])
     // 解除信号阻塞
     signals_unblock();
     // 信号处理
-    signals_handle(main_cleanup_and_exit);
+    signals_handle(on_signal);
 
     return 0;
 }

@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-10-27 16:45:19 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-27 16:48:27
+ * @Last Modified time: 2021-10-28 10:24:31
  */
 
 #include <pthread.h>
@@ -26,6 +26,7 @@ int main()
     int       err;
     err = pthread_create(&t1, NULL, mythread, NULL);
     printf("cancel t1 thread before\n");
+    // 调用cancel后，while(1)中printf会被中断，线程在此退出
     pthread_cancel(t1);
     printf("cancel t1 thread after\n");
     pthread_join(t1, NULL);

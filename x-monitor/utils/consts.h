@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-22 11:57:56
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-22 14:05:33
+ * @Last Modified time: 2021-10-28 16:45:47
  */
 
 #include <stdio.h>
@@ -12,3 +12,6 @@
 #define EXTERNAL_PLUGIN_CMD_LINE_MAX (FILENAME_MAX * 2)
 #define CONFIG_NAME_MAX 1024
 #define STDOUT_LINE_BUF_SIZE 1024
+
+extern const char DEFAULT_PLUGINS_DIR[];
+extern const char DEFAULT_PIDFILE[];

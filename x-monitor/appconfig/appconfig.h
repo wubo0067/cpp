@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-18 11:47:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-22 14:33:44
+ * @Last Modified time: 2021-10-28 14:14:07
  */
 
 #pragma once
@@ -11,6 +11,7 @@
 
 extern int32_t appconfig_load(const char *config_file);
 extern void    appconfig_destroy();
+extern void    appconfig_reload();
 
 // extern void appconfig_rdlock();
 // extern void appconfig_wrlock();
