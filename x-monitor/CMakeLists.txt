@@ -23,6 +23,7 @@ set (XMonitor_VERSION_MINOR 0)
 
 # 依赖项
 set(EXTRA_DIR "${PROJECT_SOURCE_DIR}/extra")
+set(KERNEL_DIR "/usr/src/linux-5.12.9")
  
 # 配置一个头文件来传递一些CMake设置到源代码
 configure_file (
@@ -30,8 +31,16 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/config.h"
   )
 
+# ebpf user include路径
+set(EBPF_USER_INCLUDE_DIRS "${KERNEL_DIR}/usr/include"
+                           "${KERNEL_DIR}/tools/include"
+                           "${KERNEL_DIR}/tools/perf"
+                           "${KERNEL_DIR}/tools/lib"
+                           "${KERNEL_DIR}/tools/testing/selftests/bpf")
+
 # 头文件include目录
-include_directories("${PROJECT_SOURCE_DIR}" "${EXTRA_DIR}/include")
+include_directories("${PROJECT_SOURCE_DIR}" 
+                    "${EXTRA_DIR}/include")
 
 # 第三方静态库链接路径
 link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
@@ -48,6 +57,7 @@ add_definitions(
 # 项目子目录
 add_subdirectory(utils)
 add_subdirectory(test/construct_init)
+add_subdirectory(test/cachestat_cli)
 
 # 子目录源代码
 set(PLUGINSD_FILES

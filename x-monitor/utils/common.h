@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-10-15 10:52:05 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-15 11:05:35
+ * @Last Modified time: 2021-11-03 11:38:54
  */
 
 #pragma once
@@ -50,6 +50,10 @@ extern "C" {
 #include <uv.h>
 #include <assert.h>
 #include <stdbool.h>
+
+#define __new(T) (typeof(T))calloc(1, sizeof(T))
+#define __delete(P) free((void*)(P))
+#define __zero(P) memset((void*)(P), 0, sizeof(*(P)))
 
 #ifdef __cplusplus
 }

@@ -2,14 +2,12 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:15:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-15 11:20:07
+ * @Last Modified time: 2021-11-03 11:10:51
  */
 
 #include "log.h"
 #include "common.h"
 #include "compiler.h"
-
-const char *const log_category_name = "xmonitor";
 
 zlog_category_t *g_log_cat = NULL;
 
@@ -25,7 +23,7 @@ static inline void __log_unlock(void)
     pthread_mutex_unlock(&__log_mutex);
 }
 
-int32_t log_init(const char *log_config_file)
+int32_t log_init(const char *log_config_file, const char * log_category_name)
 {
     int32_t ret = 0;
 

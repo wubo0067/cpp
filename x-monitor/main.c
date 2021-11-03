@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-28 15:22:28
+ * @Last Modified time: 2021-11-03 11:11:09
  */
 
 #include "config.h"
@@ -196,7 +196,7 @@ int32_t main(int32_t argc, char *argv[])
                     // 初始化log
                     const char *log_config_file =
                         appconfig_get_str("application.log_config_file", NULL);
-                    if (log_init(log_config_file) < 0) {
+                    if (log_init(log_config_file, "xmonitor") < 0) {
                         return -1;
                     }
                     config_loaded = 1;

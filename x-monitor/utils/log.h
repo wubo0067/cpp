@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 11:15:44
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-28 16:26:45
+ * @Last Modified time: 2021-11-03 11:55:41
  */
 #pragma once
 
@@ -27,5 +27,5 @@ extern zlog_category_t *g_log_cat;
 #define error(args...) zlog_error(g_log_cat, ##args)
 #define fatal(args...) zlog_fatalf(g_log_cat, ##args)
 
-extern int32_t log_init(const char *log_config_file);
+extern int32_t log_init(const char *log_config_file, const char * log_category_name);
 extern void    log_fini();

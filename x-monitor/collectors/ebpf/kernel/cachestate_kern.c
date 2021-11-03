@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-02 14:01:24 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-02 15:27:19
+ * @Last Modified time: 2021-11-03 15:00:39
  */
 
 #include <linux/ptrace.h>
@@ -64,15 +64,66 @@ __s32 xmonitor_add_to_page_cache_lru(struct pt_regs* ctx) {
 
 SEC("kprobe/mark_page_accessed")
 __s32 xmonitor_mark_page_accessed(struct pt_regs* ctx) {
+    struct cachestate_key_t key = {};
+    __u64 init_val = 1;
+    // 得到应用程序名
+    bpf_get_current_comm( &key.comm, sizeof( key.comm ) );
+    // 得到进程ID
+    key.pid = (pid_t)bpf_get_current_pid_tgid();
+    // 得到用户ID
+    key.uid = (uid_t)bpf_get_current_uid_gid();
+    // 得到IP寄存器的值
+    key.ip = PT_REGS_IP(ctx);
+
+    __u64 *value = bpf_map_lookup_elem( &cachestate_map, &key );
+    if ( value ) {
+        xmonitor_update_u64(value, 1);
+    } else {
+        bpf_map_update_elem( &cachestate_map, &key, &init_val, BPF_NOEXIST );
+    }
     return 0;
 }
 
 SEC("kprobe/account_page_dirtied")
 __s32 xmonitor_account_page_dirtied(struct pt_regs* ctx) {
+    struct cachestate_key_t key = {};
+    __u64 init_val = 1;
+    // 得到应用程序名
+    bpf_get_current_comm( &key.comm, sizeof( key.comm ) );
+    // 得到进程ID
+    key.pid = (pid_t)bpf_get_current_pid_tgid();
+    // 得到用户ID
+    key.uid = (uid_t)bpf_get_current_uid_gid();
+    // 得到IP寄存器的值
+    key.ip = PT_REGS_IP(ctx);
+
+    __u64 *value = bpf_map_lookup_elem( &cachestate_map, &key );
+    if ( value ) {
+        xmonitor_update_u64(value, 1);
+    } else {
+        bpf_map_update_elem( &cachestate_map, &key, &init_val, BPF_NOEXIST );
+    }
     return 0;
 }
 
 SEC("kprobe/mark_buffer_dirty")
 __s32 xmonitor_mark_buffer_dirty(struct pt_regs* ctx) {
+    struct cachestate_key_t key = {};
+    __u64 init_val = 1;
+    // 得到应用程序名
+    bpf_get_current_comm( &key.comm, sizeof( key.comm ) );
+    // 得到进程ID
+    key.pid = (pid_t)bpf_get_current_pid_tgid();
+    // 得到用户ID
+    key.uid = (uid_t)bpf_get_current_uid_gid();
+    // 得到IP寄存器的值
+    key.ip = PT_REGS_IP(ctx);
+
+    __u64 *value = bpf_map_lookup_elem( &cachestate_map, &key );
+    if ( value ) {
+        xmonitor_update_u64(value, 1);
+    } else {
+        bpf_map_update_elem( &cachestate_map, &key, &init_val, BPF_NOEXIST );
+    }
     return 0;
 }

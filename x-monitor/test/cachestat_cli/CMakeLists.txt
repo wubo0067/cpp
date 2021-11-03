@@ -1,0 +1,18 @@
+# 目录下所有的源代码文件并将列表存储在cachestat_cli_srcs中
+AUX_SOURCE_DIRECTORY(. cachestat_cli_srcs)
+
+set(EBPF_HELPER_OBJS
+	${KERNEL_DIR}/tools/testing/selftests/bpf/trace_helpers.o)
+
+include_directories("${KERNEL_DIR}/usr/include"
+                    "${KERNEL_DIR}/tools/include"
+                    "${KERNEL_DIR}/tools/perf"
+                    "${KERNEL_DIR}/tools/lib"
+                    "${KERNEL_DIR}/tools/testing/selftests/bpf")
+
+link_directories("${KERNEL_DIR}/tools/lib/bpf")
+
+# 加上trace_helpers.o文件到链接队列中
+add_executable(cachestat_cli ${cachestat_cli_srcs} ${EBPF_HELPER_OBJS})
+
+target_link_libraries(cachestat_cli xmonitor-utils libbpf.a elf pthread z m)                 
