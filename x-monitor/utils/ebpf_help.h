@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-03 11:26:22 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-03 14:35:23
+ * @Last Modified time: 2021-11-03 16:48:18
  */
 
 #pragma once
@@ -17,3 +17,4 @@
 
 extern int32_t bpf_printf(enum libbpf_print_level level, const char *fmt,
                           va_list args);
+extern const char *bpf_get_ksym_name(uint64_t addr);

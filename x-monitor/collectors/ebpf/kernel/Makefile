@@ -80,5 +80,5 @@ $(OUTPUT):
 .PHONY: clean
 clean: 
 	$(call msg, CLEANING)
-	$(Q)rm -rf $(OUTPUT) $(BPF_KERN_OBJS)
+	$(Q)rm -rf $(OUTPUT) $(BPF_KERN_OBJS) *.o
 		
