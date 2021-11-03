@@ -13,5 +13,5 @@
 #define CONFIG_NAME_MAX 1024
 #define STDOUT_LINE_BUF_SIZE 1024
 
-extern const char DEFAULT_PLUGINS_DIR[];
-extern const char DEFAULT_PIDFILE[];
+extern char *DEFAULT_PLUGINS_DIR;
+extern char *DEFAULT_PIDFILE;
