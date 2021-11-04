@@ -12,7 +12,7 @@
 const char *const cachestat_kern_obj =
     "../collectors/ebpf/kernel/ebpf_cachestate_kern.5.12.o";
 
-#define CLEAR() printf("\033[2J")
+#define CLEAR() printf("\e[1;1H\e[2J")
 
 struct cachestat_key {
     __u32 pid;      // 进程ID
@@ -46,12 +46,19 @@ int32_t main(int32_t argc, char **argv)
     int32_t             map_fd, ret, j = 0, result = 0;
     struct bpf_object  *obj;
     struct bpf_program *prog;
-    struct bpf_link    *links[5]; // 这个是SEC数量
+    struct bpf_link    *links[6]; // 这个是SEC数量
     const char         *section;
     char                symbol[256];
     time_t              t;
     struct tm          *tm;
     char                ts[32];
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: cachestat_cli ebpf_cachestate_kern.o\n");
+        return -1;
+    }
+
+    const char *bpf_kern_o = argv[1];
 
     if (load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
@@ -128,10 +135,12 @@ int32_t main(int32_t argc, char **argv)
 
         CLEAR();
 
-        fprintf(stdout, "\n%-9s %-16s %-6s %-8s %-20s %-20s %-20s %-20s %-15s %-15s %-15s %-15s\n",
-                "TIME", "PCOMM", "PID", "UID", "add_to_page_cache_lru",
-                "mark_page_accessed", "account_page_dirtied",
-                "mark_buffer_dirty", "hits", "misses", "read_hit", "write_hit");
+        fprintf(
+            stdout,
+            "\n%-9s %-16s %-6s %-8s %-20s %-20s %-20s %-20s %-15s %-15s %-15s %-15s\n",
+            "TIME", "PCOMM", "PID", "UID", "add_to_page_cache_lru",
+            "mark_page_accessed", "account_page_dirtied", "mark_buffer_dirty",
+            "hits", "misses", "read_hit", "write_hit");
 
         while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
             if (__sig_exit) {
@@ -145,41 +154,42 @@ int32_t main(int32_t argc, char **argv)
                 tm = localtime(&t);
                 strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
-                uint64_t mpa = value.mark_page_accessed;
-                uint64_t mbd = value.mark_buffer_dirty;
+                uint64_t mpa  = value.mark_page_accessed;
+                uint64_t mbd  = value.mark_buffer_dirty;
                 uint64_t apcl = value.add_to_page_cache_lru;
-                uint64_t apd = value.account_page_dirtied;
+                uint64_t apd  = value.account_page_dirtied;
 
                 uint64_t access = mpa + mbd;
                 uint64_t misses = apcl + apd;
 
                 float rtaccess = 0.0;
                 float wtaccess = 0.0;
-                float whits = 0.0;
-                float rhits = 0.0;
+                float whits    = 0.0;
+                float rhits    = 0.0;
 
-                if(mpa > 0) {
-                    rtaccess = (float)mpa / (float)(access+misses);
+                if (mpa > 0) {
+                    rtaccess = (float)mpa / (float)(access + misses);
                 }
 
-                if(apcl > 0) {
-                    wtaccess = (float)apcl / (float)(access+misses);
+                if (apcl > 0) {
+                    wtaccess = (float)apcl / (float)(access + misses);
                 }
 
                 if (fabs(wtaccess) > epsilon) {
                     whits = 100 * wtaccess;
                 }
 
-                if(fabs(rtaccess) > epsilon) {
+                if (fabs(rtaccess) > epsilon) {
                     rhits = 100 * rtaccess;
                 }
 
-                fprintf(stdout,
-                        "%-9s %-16s %-6d %-8s %-20llu %-20llu %-20llu %-20llu %-15lu %-15lu %-15f %-15f\n",
-                        ts, next_key.comm, next_key.pid,
-                        get_username(next_key.uid), value.add_to_page_cache_lru,
-                        value.mark_page_accessed, value.account_page_dirtied,
-                        value.mark_buffer_dirty, access, misses, rhits, whits);
+                fprintf(
+                    stdout,
+                    "%-9s %-16s %-6d %-8s %-20llu %-20llu %-20llu %-20llu %-15lu %-15lu %-15f %-15f\n",
+                    ts, next_key.comm, next_key.pid, get_username(next_key.uid),
+                    value.add_to_page_cache_lru, value.mark_page_accessed,
+                    value.account_page_dirtied, value.mark_buffer_dirty, access,
+                    misses, rhits, whits);
             } else {
                 fprintf(
                     stderr,
