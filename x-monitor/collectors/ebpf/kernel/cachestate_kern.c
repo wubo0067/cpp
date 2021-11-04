@@ -22,7 +22,7 @@ struct cachestate_key_t {
     char  comm[TASK_COMM_LEN]; // 进程名
 };
 
-#define CACHE_STATE_MAX_SIZE (PID_MAX_DEFAULT * 4)
+#define CACHE_STATE_MAX_SIZE 1024
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 14))
 

@@ -35,9 +35,7 @@ int32_t main(int32_t argc, char **argv)
     struct bpf_link    *links[4]; // 这个是SEC数量
     const char         *section;
     char                symbol[256];
-
-    struct cachestate_key_t key = {}, next_key;
-    uint64_t                cachestate_map_value;
+    uint64_t            cachestate_map_value;
 
     if (load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
@@ -105,25 +103,34 @@ int32_t main(int32_t argc, char **argv)
     signal(SIGTERM, sig_handler);
 
     while (!__sig_exit) {
+        // key初始为无效的键值，这迫使bpf_map_get_next_key从头开始查找
+        struct cachestate_key_t key = {}, next_key;
+
+        fprintf(stdout, "%-16s %-6s %-6s %-19s %-16s %s\n", "PCOMM", "PID",
+                "UID", "ADDR", "SYMBOL", "COUNT");
+
         while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
             if (__sig_exit) {
                 fprintf(stdout, "--------------\n");
                 break;
             }
-            key = next_key;
 
             result =
                 bpf_map_lookup_elem(map_fd, &next_key, &cachestate_map_value);
             if (0 == result) {
-                fprintf(stdout, "%-16s %-6s %-6s %-19s %-16s %s\n", "PCOMM", "PID", "UID",
-                        "ADDR", "SYMBOL", "COUNT");
-                fprintf(stderr, "'%-16s' %-6d %-6d 0x%-17lx %-16s %5ld\n",
+                fprintf(stderr, "%-16s %-6d %-6d 0x%-17lx %-16s %5ld\n",
                         next_key.comm, next_key.pid, next_key.uid, next_key.ip,
                         bpf_get_ksym_name(next_key.ip), cachestate_map_value);
             } else {
-                fprintf(stderr, "ERROR: bpf_map_lookup_elem fail to get entry value of Key: '%s'\n", key.comm);
+                fprintf(
+                    stderr,
+                    "ERROR: bpf_map_lookup_elem fail to get entry value of Key: '%s'\n",
+                    key.comm);
             }
+
+            key = next_key;
         }
+        sleep(1);
     }
 
     fprintf(stdout, "kprobing funcs exit\n");
