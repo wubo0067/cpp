@@ -12,6 +12,8 @@
 const char *const cachestat_kern_obj =
     "../collectors/ebpf/kernel/ebpf_cachestate_kern.5.12.o";
 
+#define CLEAR() printf("\033[2J")
+
 struct cachestate_key_t {
     uint64_t ip;       // IP寄存器的值
     uint32_t pid;      // 进程ID
@@ -36,6 +38,9 @@ int32_t main(int32_t argc, char **argv)
     const char         *section;
     char                symbol[256];
     uint64_t            cachestate_map_value;
+    time_t              t;
+    struct tm          *tm;
+    char                ts[32];
 
     if (load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
@@ -105,9 +110,11 @@ int32_t main(int32_t argc, char **argv)
     while (!__sig_exit) {
         // key初始为无效的键值，这迫使bpf_map_get_next_key从头开始查找
         struct cachestate_key_t key = {}, next_key;
+        
+        CLEAR();
 
-        fprintf(stdout, "%-16s %-6s %-6s %-19s %-16s %s\n", "PCOMM", "PID",
-                "UID", "ADDR", "SYMBOL", "COUNT");
+        fprintf(stdout, "\n%-9s %-16s %-6s %-8s %-21s %-24s %-5s\n", "TIME",
+                "PCOMM", "PID", "UID", "ADDR", "SYMBOL", "COUNT");
 
         while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
             if (__sig_exit) {
@@ -118,9 +125,14 @@ int32_t main(int32_t argc, char **argv)
             result =
                 bpf_map_lookup_elem(map_fd, &next_key, &cachestate_map_value);
             if (0 == result) {
-                fprintf(stderr, "%-16s %-6d %-6d 0x%-17lx %-16s %5ld\n",
-                        next_key.comm, next_key.pid, next_key.uid, next_key.ip,
-                        bpf_get_ksym_name(next_key.ip), cachestate_map_value);
+                time(&t);
+                tm = localtime(&t);
+                strftime(ts, sizeof(ts), "%H:%M:%S", tm);
+
+                fprintf(stdout, "%-9s %-16s %-6d %-8s 0x%-19lx %-24s %-5ld\n",
+                        ts, next_key.comm, next_key.pid, get_username(next_key.uid),
+                        next_key.ip, bpf_get_ksym_name(next_key.ip),
+                        cachestate_map_value);
             } else {
                 fprintf(
                     stderr,

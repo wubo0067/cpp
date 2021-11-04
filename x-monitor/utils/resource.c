@@ -8,6 +8,8 @@
 #include "resource.h"
 #include "common.h"
 
+static const char __no_user[] = "";
+
 int32_t bump_memlock_rlimit(void)
 {
     struct rlimit rlim_new = {
@@ -16,4 +18,13 @@ int32_t bump_memlock_rlimit(void)
     };
 
     return setrlimit(RLIMIT_MEMLOCK, &rlim_new);
+}
+
+const char *get_username(uid_t uid)
+{
+    struct passwd *pwd = getpwuid(uid);
+    if (pwd == NULL) {
+        return __no_user;
+    }
+    return pwd->pw_name;
 }

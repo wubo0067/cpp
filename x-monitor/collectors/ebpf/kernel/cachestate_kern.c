@@ -73,7 +73,7 @@ __s32 xmonitor_add_to_page_cache_lru(struct pt_regs *ctx)
         xmonitor_update_u64(value, 1);
         printk("add_to_page_cache_lru pcomm: '%s' pid: %d value: %lu", key.comm,
                key.pid, *value);
-        bpf_map_update_elem(&cachestate_map, &key, value, BPF_EXIST);               
+        bpf_map_update_elem(&cachestate_map, &key, value, BPF_EXIST);
     } else {
         ret =
             bpf_map_update_elem(&cachestate_map, &key, &init_val, BPF_NOEXIST);
@@ -108,16 +108,15 @@ __s32 xmonitor_mark_page_accessed(struct pt_regs *ctx)
     __u64 *value = bpf_map_lookup_elem(&cachestate_map, &key);
     if (value) {
         xmonitor_update_u64(value, 1);
-        bpf_map_update_elem(&cachestate_map, &key, value, BPF_EXIST);    
+        bpf_map_update_elem(&cachestate_map, &key, value, BPF_EXIST);
         printk("mark_page_accessed pcomm: '%s' pid: %d value: %lu", key.comm,
                key.pid, *value);
     } else {
         ret =
             bpf_map_update_elem(&cachestate_map, &key, &init_val, BPF_NOEXIST);
         if (0 == ret) {
-            printk(
-                "mark_page_accessed add new pcomm: '%s' pid: %d successed",
-                key.comm, key.pid, *value);
+            printk("mark_page_accessed add new pcomm: '%s' pid: %d successed",
+                   key.comm, key.pid, *value);
         } else {
             printk(
                 "mark_page_accessed add new pcomm: '%s' pid: %d failed error: %d",
@@ -177,6 +176,16 @@ __s32 xmonitor_mark_buffer_dirty(struct pt_regs *ctx)
         bpf_map_update_elem(&cachestate_map, &key, &init_val, BPF_NOEXIST);
     }
     return 0;
+}
+
+SEC("tracepoint/sched/sched_process_exit")
+__s32 xmonitor_sched_process_exit(void *ctx)
+{
+    struct cachestate_key_t key = {};
+
+    bpf_get_current_comm(&key.comm, sizeof(key.comm));
+    key.pid = (pid_t)bpf_get_current_pid_tgid();
+    key.uid = (uid_t)bpf_get_current_uid_gid();
 }
 
 char           _license[] SEC("license") = "GPL";
