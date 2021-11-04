@@ -15,11 +15,21 @@
 
 #include "xmonitor_bpf_helper.h"
 
-struct cachestate_key_t {
-    __u64 ip;                  // IP寄存器的值
+struct cachestat_key {
     __u32 pid;                 // 进程ID
     __u32 uid;                 // 用户ID
     char  comm[TASK_COMM_LEN]; // 进程名
+};
+
+struct cachestat_value {
+    __u64 add_to_page_cache_lru;
+    __u64 ip_add_to_page_cache; // IP寄存器的值
+    __u64 mark_page_accessed;
+    __u64 ip_mark_page_accessed; // IP寄存器的值
+    __u64 account_page_dirtied;
+    __u64 ip_account_page_dirtied; // IP寄存器的值
+    __u64 mark_buffer_dirty;
+    __u64 ip_mark_buffer_dirty; // IP寄存器的值
 };
 
 #define CACHE_STATE_MAX_SIZE 1024
@@ -29,20 +39,20 @@ struct cachestate_key_t {
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, CACHE_STATE_MAX_SIZE);
-    __type(key, struct cachestate_key_t);
-    __type(value, __u64);
-} cachestate_map SEC(".maps");
+    __type(key, struct cachestat_key);
+    __type(value, struct cachestat_value);
+} cachestat_map SEC(".maps");
 
 #else
 
-struct bpf_map_def SEC("maps") cachestate_map = {
+struct bpf_map_def SEC("maps") cachestat_map = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0))
     .type        = BPF_MAP_TYPE_HASH,
 #else
     .type = BPF_MAP_TYPE_PERCPU_HASH,
 #endif
-    .key_size    = sizeof(struct cachestate_key_t),
-    .value_size  = sizeof(__u64),
+    .key_size    = sizeof(struct cachestat_key),
+    .value_size  = sizeof(struct cachestat_value),
     .max_entries = CACHE_STATE_MAX_SIZE,
 };
 
@@ -56,31 +66,34 @@ struct bpf_map_def SEC("maps") cachestate_map = {
 SEC("kprobe/add_to_page_cache_lru")
 __s32 xmonitor_add_to_page_cache_lru(struct pt_regs *ctx)
 {
-    __s32                   ret      = 0;
-    struct cachestate_key_t key      = {};
-    __u64                   init_val = 1;
+    __s32                   ret = 0;
+    struct cachestat_key    key = {};
+    struct cachestat_value *fill;
+
     // 得到应用程序名
     bpf_get_current_comm(&key.comm, sizeof(key.comm));
     // 得到进程ID
     key.pid = (pid_t)bpf_get_current_pid_tgid();
     // 得到用户ID
     key.uid = (uid_t)bpf_get_current_uid_gid();
-    // 得到IP寄存器的值
-    key.ip = PT_REGS_IP(ctx);
 
-    __u64 *value = bpf_map_lookup_elem(&cachestate_map, &key);
-    if (value) {
-        xmonitor_update_u64(value, 1);
+    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    if (fill) {
+        xmonitor_update_u64(&fill->add_to_page_cache_lru, 1);
         printk("add_to_page_cache_lru pcomm: '%s' pid: %d value: %lu", key.comm,
-               key.pid, *value);
-        bpf_map_update_elem(&cachestate_map, &key, value, BPF_EXIST);
+               key.pid, fill->add_to_page_cache_lru);
+        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
     } else {
-        ret =
-            bpf_map_update_elem(&cachestate_map, &key, &init_val, BPF_NOEXIST);
+        struct cachestat_value init_value = {
+            .add_to_page_cache_lru = 1,
+        };
+        init_value.ip_add_to_page_cache = PT_REGS_IP(ctx);
+
+        ret = bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_ANY);
         if (0 == ret) {
             printk(
                 "add_to_page_cache_lru add new pcomm: '%s' pid: %d successed",
-                key.comm, key.pid, *value);
+                key.comm, key.pid);
         } else {
             printk(
                 "add_to_page_cache_lru add new pcomm: '%s' pid: %d failed error: %d",
@@ -93,30 +106,33 @@ __s32 xmonitor_add_to_page_cache_lru(struct pt_regs *ctx)
 SEC("kprobe/mark_page_accessed")
 __s32 xmonitor_mark_page_accessed(struct pt_regs *ctx)
 {
-    __s32                   ret      = 0;
-    struct cachestate_key_t key      = {};
-    __u64                   init_val = 1;
+    __s32                   ret = 0;
+    struct cachestat_key    key = {};
+    struct cachestat_value *fill;
+
     // 得到应用程序名
     bpf_get_current_comm(&key.comm, sizeof(key.comm));
     // 得到进程ID
     key.pid = (pid_t)bpf_get_current_pid_tgid();
     // 得到用户ID
     key.uid = (uid_t)bpf_get_current_uid_gid();
-    // 得到IP寄存器的值
-    key.ip = PT_REGS_IP(ctx);
 
-    __u64 *value = bpf_map_lookup_elem(&cachestate_map, &key);
-    if (value) {
-        xmonitor_update_u64(value, 1);
-        bpf_map_update_elem(&cachestate_map, &key, value, BPF_EXIST);
+    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    if (fill) {
+        xmonitor_update_u64(&fill->mark_page_accessed, 1);
         printk("mark_page_accessed pcomm: '%s' pid: %d value: %lu", key.comm,
-               key.pid, *value);
+               key.pid, fill->mark_page_accessed);
+        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
     } else {
-        ret =
-            bpf_map_update_elem(&cachestate_map, &key, &init_val, BPF_NOEXIST);
+        struct cachestat_value init_value = {
+            .mark_page_accessed = 1,
+        };
+        init_value.ip_mark_page_accessed = PT_REGS_IP(ctx);
+
+        ret = bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_ANY);
         if (0 == ret) {
             printk("mark_page_accessed add new pcomm: '%s' pid: %d successed",
-                   key.comm, key.pid, *value);
+                   key.comm, key.pid);
         } else {
             printk(
                 "mark_page_accessed add new pcomm: '%s' pid: %d failed error: %d",
@@ -129,25 +145,38 @@ __s32 xmonitor_mark_page_accessed(struct pt_regs *ctx)
 SEC("kprobe/account_page_dirtied")
 __s32 xmonitor_account_page_dirtied(struct pt_regs *ctx)
 {
-    struct cachestate_key_t key      = {};
-    __u64                   init_val = 1;
+    __s32                   ret = 0;
+    struct cachestat_key    key = {};
+    struct cachestat_value *fill;
+
     // 得到应用程序名
     bpf_get_current_comm(&key.comm, sizeof(key.comm));
     // 得到进程ID
     key.pid = (pid_t)bpf_get_current_pid_tgid();
     // 得到用户ID
     key.uid = (uid_t)bpf_get_current_uid_gid();
-    // 得到IP寄存器的值
-    key.ip = PT_REGS_IP(ctx);
 
-    printk("account_page_dirtied pcomm: '%s', pid: %d, ip: %lu", key.comm,
-           key.pid, key.ip);
-
-    __u64 *value = bpf_map_lookup_elem(&cachestate_map, &key);
-    if (value) {
-        xmonitor_update_u64(value, 1);
+    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    if (fill) {
+        xmonitor_update_u64(&fill->account_page_dirtied, 1);
+        printk("account_page_dirtied pcomm: '%s' pid: %d value: %lu", key.comm,
+               key.pid, fill->account_page_dirtied);
+        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
     } else {
-        bpf_map_update_elem(&cachestate_map, &key, &init_val, BPF_NOEXIST);
+        struct cachestat_value init_value = {
+            .account_page_dirtied = 1,
+        };
+        init_value.ip_account_page_dirtied = PT_REGS_IP(ctx);
+
+        ret = bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_ANY);
+        if (0 == ret) {
+            printk("account_page_dirtied add new pcomm: '%s' pid: %d successed",
+                   key.comm, key.pid);
+        } else {
+            printk(
+                "account_page_dirtied add new pcomm: '%s' pid: %d failed error: %d",
+                key.comm, key.pid, ret);
+        }
     }
     return 0;
 }
@@ -155,25 +184,38 @@ __s32 xmonitor_account_page_dirtied(struct pt_regs *ctx)
 SEC("kprobe/mark_buffer_dirty")
 __s32 xmonitor_mark_buffer_dirty(struct pt_regs *ctx)
 {
-    struct cachestate_key_t key      = {};
-    __u64                   init_val = 1;
+    __s32                   ret = 0;
+    struct cachestat_key    key = {};
+    struct cachestat_value *fill;
+
     // 得到应用程序名
     bpf_get_current_comm(&key.comm, sizeof(key.comm));
     // 得到进程ID
     key.pid = (pid_t)bpf_get_current_pid_tgid();
     // 得到用户ID
     key.uid = (uid_t)bpf_get_current_uid_gid();
-    // 得到IP寄存器的值
-    key.ip = PT_REGS_IP(ctx);
 
-    printk("mark_buffer_dirty pcomm: '%s', pid: %d, ip: %lu", key.comm, key.pid,
-           key.ip);
-
-    __u64 *value = bpf_map_lookup_elem(&cachestate_map, &key);
-    if (value) {
-        xmonitor_update_u64(value, 1);
+    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    if (fill) {
+        xmonitor_update_u64(&fill->mark_buffer_dirty, 1);
+        printk("mark_buffer_dirty pcomm: '%s' pid: %d value: %lu", key.comm,
+               key.pid, fill->mark_buffer_dirty);
+        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
     } else {
-        bpf_map_update_elem(&cachestate_map, &key, &init_val, BPF_NOEXIST);
+        struct cachestat_value init_value = {
+            .mark_buffer_dirty = 1,
+        };
+        init_value.ip_mark_buffer_dirty = PT_REGS_IP(ctx);
+
+        ret = bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_ANY);
+        if (0 == ret) {
+            printk("mark_buffer_dirty add new pcomm: '%s' pid: %d successed",
+                   key.comm, key.pid);
+        } else {
+            printk(
+                "mark_buffer_dirty add new pcomm: '%s' pid: %d failed error: %d",
+                key.comm, key.pid, ret);
+        }
     }
     return 0;
 }
@@ -181,11 +223,17 @@ __s32 xmonitor_mark_buffer_dirty(struct pt_regs *ctx)
 SEC("tracepoint/sched/sched_process_exit")
 __s32 xmonitor_sched_process_exit(void *ctx)
 {
-    struct cachestate_key_t key = {};
+    struct cachestat_key key = {};
 
     bpf_get_current_comm(&key.comm, sizeof(key.comm));
     key.pid = (pid_t)bpf_get_current_pid_tgid();
     key.uid = (uid_t)bpf_get_current_uid_gid();
+
+    bpf_map_delete_elem(&cachestat_map, &key);
+
+    printk("pcomm: '%s' pid: %d uid: %d exit", key.comm, key.pid, key.uid);
+
+    return 0;
 }
 
 char           _license[] SEC("license") = "GPL";

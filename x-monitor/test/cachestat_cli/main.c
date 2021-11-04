@@ -14,14 +14,26 @@ const char *const cachestat_kern_obj =
 
 #define CLEAR() printf("\033[2J")
 
-struct cachestate_key_t {
-    uint64_t ip;       // IP寄存器的值
-    uint32_t pid;      // 进程ID
-    uint32_t uid;      // 用户ID
-    char     comm[16]; // 进程名
+struct cachestat_key {
+    __u32 pid;      // 进程ID
+    __u32 uid;      // 用户ID
+    char  comm[16]; // 进程名
+};
+
+struct cachestat_value {
+    __u64 add_to_page_cache_lru;
+    __u64 ip_add_to_page_cache; // IP寄存器的值
+    __u64 mark_page_accessed;
+    __u64 ip_mark_page_accessed; // IP寄存器的值
+    __u64 account_page_dirtied;
+    __u64 ip_account_page_dirtied; // IP寄存器的值
+    __u64 mark_buffer_dirty;
+    __u64 ip_mark_buffer_dirty; // IP寄存器的值
 };
 
 static sig_atomic_t __sig_exit = 0;
+
+static const float epsilon = 1e-6;
 
 static void sig_handler(int sig)
 {
@@ -34,10 +46,9 @@ int32_t main(int32_t argc, char **argv)
     int32_t             map_fd, ret, j = 0, result = 0;
     struct bpf_object  *obj;
     struct bpf_program *prog;
-    struct bpf_link    *links[4]; // 这个是SEC数量
+    struct bpf_link    *links[5]; // 这个是SEC数量
     const char         *section;
     char                symbol[256];
-    uint64_t            cachestate_map_value;
     time_t              t;
     struct tm          *tm;
     char                ts[32];
@@ -72,10 +83,10 @@ int32_t main(int32_t argc, char **argv)
     }
 
     // find map
-    map_fd = bpf_object__find_map_fd_by_name(obj, "cachestate_map");
+    map_fd = bpf_object__find_map_fd_by_name(obj, "cachestat_map");
     if (map_fd < 0) {
         fprintf(stderr,
-                "ERROR: finding a map 'cachestate_map' in obj file failed\n");
+                "ERROR: finding a map 'cachestat_map' in obj file failed\n");
         goto cleanup;
     }
 
@@ -83,25 +94,28 @@ int32_t main(int32_t argc, char **argv)
     {
         section = bpf_program__section_name(prog);
         fprintf(stdout, "[%d] section: %s\n", j, section);
+
         if (sscanf(section, "kprobe/%s", symbol) != 1) {
-            fprintf(stderr, "ERROR: invalid section name: %s\n", section);
-            continue;
+            links[j] = bpf_program__attach(prog);
+        } else {
+            /* Attach prog only when symbol exists */
+            if (ksym_get_addr(symbol)) {
+                //prog->log_level = 1;
+                links[j] = bpf_program__attach(prog);
+            } else {
+                continue;
+            }
         }
 
-        /* Attach prog only when symbol exists */
-        if (ksym_get_addr(symbol)) {
-            //prog->log_level = 1;
-            links[j] = bpf_program__attach(prog);
-            if (libbpf_get_error(links[j])) {
-                fprintf(stderr, "[%d] section: %s bpf_program__attach failed\n",
-                        j, section);
-                links[j] = NULL;
-                goto cleanup;
-            }
-            fprintf(stderr, "[%d] section: %s bpf program attach successed\n",
-                    j, section);
-            j++;
+        if (libbpf_get_error(links[j])) {
+            fprintf(stderr, "[%d] section: %s bpf_program__attach failed\n", j,
+                    section);
+            links[j] = NULL;
+            goto cleanup;
         }
+        fprintf(stderr, "[%d] section: %s bpf program attach successed\n", j,
+                section);
+        j++;
     }
 
     signal(SIGINT, sig_handler);
@@ -109,12 +123,15 @@ int32_t main(int32_t argc, char **argv)
 
     while (!__sig_exit) {
         // key初始为无效的键值，这迫使bpf_map_get_next_key从头开始查找
-        struct cachestate_key_t key = {}, next_key;
-        
+        struct cachestat_key   key = {}, next_key;
+        struct cachestat_value value;
+
         CLEAR();
 
-        fprintf(stdout, "\n%-9s %-16s %-6s %-8s %-21s %-24s %-5s\n", "TIME",
-                "PCOMM", "PID", "UID", "ADDR", "SYMBOL", "COUNT");
+        fprintf(stdout, "\n%-9s %-16s %-6s %-8s %-20s %-20s %-20s %-20s %-15s %-15s %-15s %-15s\n",
+                "TIME", "PCOMM", "PID", "UID", "add_to_page_cache_lru",
+                "mark_page_accessed", "account_page_dirtied",
+                "mark_buffer_dirty", "hits", "misses", "read_hit", "write_hit");
 
         while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
             if (__sig_exit) {
@@ -122,17 +139,47 @@ int32_t main(int32_t argc, char **argv)
                 break;
             }
 
-            result =
-                bpf_map_lookup_elem(map_fd, &next_key, &cachestate_map_value);
+            result = bpf_map_lookup_elem(map_fd, &next_key, &value);
             if (0 == result) {
                 time(&t);
                 tm = localtime(&t);
                 strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
-                fprintf(stdout, "%-9s %-16s %-6d %-8s 0x%-19lx %-24s %-5ld\n",
-                        ts, next_key.comm, next_key.pid, get_username(next_key.uid),
-                        next_key.ip, bpf_get_ksym_name(next_key.ip),
-                        cachestate_map_value);
+                uint64_t mpa = value.mark_page_accessed;
+                uint64_t mbd = value.mark_buffer_dirty;
+                uint64_t apcl = value.add_to_page_cache_lru;
+                uint64_t apd = value.account_page_dirtied;
+
+                uint64_t access = mpa + mbd;
+                uint64_t misses = apcl + apd;
+
+                float rtaccess = 0.0;
+                float wtaccess = 0.0;
+                float whits = 0.0;
+                float rhits = 0.0;
+
+                if(mpa > 0) {
+                    rtaccess = (float)mpa / (float)(access+misses);
+                }
+
+                if(apcl > 0) {
+                    wtaccess = (float)apcl / (float)(access+misses);
+                }
+
+                if (fabs(wtaccess) > epsilon) {
+                    whits = 100 * wtaccess;
+                }
+
+                if(fabs(rtaccess) > epsilon) {
+                    rhits = 100 * rtaccess;
+                }
+
+                fprintf(stdout,
+                        "%-9s %-16s %-6d %-8s %-20llu %-20llu %-20llu %-20llu %-15lu %-15lu %-15f %-15f\n",
+                        ts, next_key.comm, next_key.pid,
+                        get_username(next_key.uid), value.add_to_page_cache_lru,
+                        value.mark_page_accessed, value.account_page_dirtied,
+                        value.mark_buffer_dirty, access, misses, rhits, whits);
             } else {
                 fprintf(
                     stderr,

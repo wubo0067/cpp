@@ -50,6 +50,7 @@ extern "C" {
 #include <uv.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <math.h>
 
 #define __new(T) (typeof(T))calloc(1, sizeof(T))
 #define __delete(P) free((void*)(P))
