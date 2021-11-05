@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-03 11:23:12 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-03 18:04:19
+ * @Last Modified time: 2021-11-05 17:41:58
  */
 
 #include "utils/common.h"
@@ -14,21 +14,17 @@ const char *const cachestat_kern_obj =
 
 #define CLEAR() printf("\e[1;1H\e[2J")
 
-struct cachestat_key {
-    __u32 pid;      // 进程ID
-    __u32 uid;      // 用户ID
-    char  comm[16]; // 进程名
-};
-
 struct cachestat_value {
-    __u64 add_to_page_cache_lru;
-    __u64 ip_add_to_page_cache; // IP寄存器的值
-    __u64 mark_page_accessed;
-    __u64 ip_mark_page_accessed; // IP寄存器的值
-    __u64 account_page_dirtied;
-    __u64 ip_account_page_dirtied; // IP寄存器的值
-    __u64 mark_buffer_dirty;
-    __u64 ip_mark_buffer_dirty; // IP寄存器的值
+    uint64_t add_to_page_cache_lru;
+    uint64_t ip_add_to_page_cache; // IP寄存器的值
+    uint64_t mark_page_accessed;
+    uint64_t ip_mark_page_accessed; // IP寄存器的值
+    uint64_t account_page_dirtied;
+    uint64_t ip_account_page_dirtied; // IP寄存器的值
+    uint64_t mark_buffer_dirty;
+    uint64_t ip_mark_buffer_dirty; // IP寄存器的值
+    uint32_t uid;                  // 用户ID
+    char     comm[16];             // 进程名
 };
 
 static sig_atomic_t __sig_exit = 0;
@@ -74,7 +70,7 @@ int32_t main(int32_t argc, char **argv)
         return -1;
     }
 
-    obj = bpf_object__open_file(cachestat_kern_obj, NULL);
+    obj = bpf_object__open_file(bpf_kern_o, NULL);
     if (libbpf_get_error(obj)) {
         fprintf(stderr, "ERROR: opening BPF object file '%s' failed\n",
                 cachestat_kern_obj);
@@ -130,7 +126,7 @@ int32_t main(int32_t argc, char **argv)
 
     while (!__sig_exit) {
         // key初始为无效的键值，这迫使bpf_map_get_next_key从头开始查找
-        struct cachestat_key   key = {}, next_key;
+        int32_t                pid = -1, next_pid;
         struct cachestat_value value;
 
         CLEAR();
@@ -142,13 +138,13 @@ int32_t main(int32_t argc, char **argv)
             "mark_page_accessed", "account_page_dirtied", "mark_buffer_dirty",
             "hits", "misses", "read_hit", "write_hit");
 
-        while (bpf_map_get_next_key(map_fd, &key, &next_key) == 0) {
+        while (bpf_map_get_next_key(map_fd, &pid, &next_pid) == 0) {
             if (__sig_exit) {
                 fprintf(stdout, "--------------\n");
                 break;
             }
 
-            result = bpf_map_lookup_elem(map_fd, &next_key, &value);
+            result = bpf_map_lookup_elem(map_fd, &next_pid, &value);
             if (0 == result) {
                 time(&t);
                 tm = localtime(&t);
@@ -185,19 +181,19 @@ int32_t main(int32_t argc, char **argv)
 
                 fprintf(
                     stdout,
-                    "%-9s %-16s %-6d %-8s %-20llu %-20llu %-20llu %-20llu %-15lu %-15lu %-15f %-15f\n",
-                    ts, next_key.comm, next_key.pid, get_username(next_key.uid),
+                    "%-9s %-16s %-6d %-8s %-20lu %-20lu %-20lu %-20lu %-15lu %-15lu %15f%% %15f%% \n",
+                    ts, value.comm, next_pid, get_username(value.uid),
                     value.add_to_page_cache_lru, value.mark_page_accessed,
                     value.account_page_dirtied, value.mark_buffer_dirty, access,
                     misses, rhits, whits);
             } else {
                 fprintf(
                     stderr,
-                    "ERROR: bpf_map_lookup_elem fail to get entry value of Key: '%s'\n",
-                    key.comm);
+                    "ERROR: bpf_map_lookup_elem fail to get entry value of Key: '%d'\n",
+                    next_pid);
             }
 
-            key = next_key;
+            pid = next_pid;
         }
         sleep(1);
     }

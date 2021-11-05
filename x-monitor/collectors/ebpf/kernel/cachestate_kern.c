@@ -2,15 +2,13 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-02 14:01:24 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-05 16:16:48
+ * @Last Modified time: 2021-11-05 17:56:21
  */
 #include "xmonitor_bpf_helper.h"
 
-struct cachestat_key {
-    __u32 pid;                 // 进程ID
-    __u32 uid;                 // 用户ID
-    char  comm[TASK_COMM_LEN]; // 进程名
-};
+// struct cachestat_key {
+//     __u32 pid; // 进程ID
+// };
 
 struct cachestat_value {
     __u64 add_to_page_cache_lru;
@@ -21,6 +19,8 @@ struct cachestat_value {
     __u64 ip_account_page_dirtied; // IP寄存器的值
     __u64 mark_buffer_dirty;
     __u64 ip_mark_buffer_dirty; // IP寄存器的值
+    __u32 uid;                  // 用户ID
+    char  comm[TASK_COMM_LEN];  // 进程名
 };
 
 #define CACHE_STATE_MAX_SIZE 1024
@@ -30,7 +30,7 @@ struct cachestat_value {
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __uint(max_entries, CACHE_STATE_MAX_SIZE);
-    __type(key, struct cachestat_key);
+    __type(key, __u32);
     __type(value, struct cachestat_value);
 } cachestat_map SEC(".maps");
 
@@ -109,39 +109,35 @@ SEC("kprobe/add_to_page_cache_lru")
 __s32 xmonitor_add_to_page_cache_lru(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    struct cachestat_key    key = {};
+    __s32                   pid;
     struct cachestat_value *fill;
 
-    // 得到应用程序名
-    bpf_get_current_comm(&key.comm, sizeof(key.comm));
-
-    if (filter_out_symbol(key.comm)) {
-        return 0;
-    }
-
     // 得到进程ID
-    key.pid = xmonitor_get_pid();
-    // 得到用户ID
-    key.uid = (uid_t)bpf_get_current_uid_gid();
+    pid = xmonitor_get_pid();
 
-    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
         xmonitor_update_u64(&fill->add_to_page_cache_lru, 1);
-        printk("add_to_page_cache_lru pcomm: '%s' pid: %d value: %lu", key.comm,
-               key.pid, fill->add_to_page_cache_lru);
-        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
+        // 有可能因为execve导致comm改变
+        bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
+        printk("xmonitor update add_to_page_cache_lru pcomm: '%s' pid: %d value: %lu",
+               fill->comm, pid, fill->add_to_page_cache_lru);
+
     } else {
         struct cachestat_value init_value = {
             .add_to_page_cache_lru = 1,
         };
         init_value.ip_add_to_page_cache = PT_REGS_IP(ctx);
+        init_value.uid                  = (uid_t)bpf_get_current_uid_gid();
+        // 得到应用程序名
+        bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
         ret =
-            bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_NOEXIST);
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
             printk(
                 "xmonitor add_to_page_cache_lru add new pcomm: '%s' pid: %d successed",
-                key.comm, key.pid);
+                init_value.comm, pid);
         }
     }
     return 0;
@@ -151,38 +147,35 @@ SEC("kprobe/mark_page_accessed")
 __s32 xmonitor_mark_page_accessed(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    struct cachestat_key    key = {};
+    __s32                   pid;
     struct cachestat_value *fill;
 
-    // 得到应用程序名
-    bpf_get_current_comm(&key.comm, sizeof(key.comm));
-
-    if (filter_out_symbol(key.comm)) {
-        return 0;
-    }
-
     // 得到进程ID
-    key.pid = xmonitor_get_pid();
-    // 得到用户ID
-    key.uid = (uid_t)bpf_get_current_uid_gid();
+    pid = xmonitor_get_pid();
 
-    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
         xmonitor_update_u64(&fill->mark_page_accessed, 1);
-        printk("mark_page_accessed pcomm: '%s' pid: %d value: %lu", key.comm,
-               key.pid, fill->mark_page_accessed);
-        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
+        // 有可能因为execve导致comm改变
+        bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
+        printk("xmonitor update mark_page_accessed pcomm: '%s' pid: %d value: %lu", fill->comm,
+               pid, fill->mark_page_accessed);
+
     } else {
         struct cachestat_value init_value = {
             .mark_page_accessed = 1,
         };
         init_value.ip_mark_page_accessed = PT_REGS_IP(ctx);
+        init_value.uid                   = (uid_t)bpf_get_current_uid_gid();
+        // 得到应用程序名
+        bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
         ret =
-            bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_NOEXIST);
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
-            printk("xmonitor mark_page_accessed add new pcomm: '%s' pid: %d successed",
-                   key.comm, key.pid);
+            printk(
+                "xmonitor mark_page_accessed add new pcomm: '%s' pid: %d successed",
+                init_value.comm, pid);
         }
     }
     return 0;
@@ -192,38 +185,34 @@ SEC("kprobe/account_page_dirtied")
 __s32 xmonitor_account_page_dirtied(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    struct cachestat_key    key = {};
+    __s32                   pid;
     struct cachestat_value *fill;
 
-    // 得到应用程序名
-    bpf_get_current_comm(&key.comm, sizeof(key.comm));
-
-    if (filter_out_symbol(key.comm)) {
-        return 0;
-    }
-
     // 得到进程ID
-    key.pid = xmonitor_get_pid();
-    // 得到用户ID
-    key.uid = (uid_t)bpf_get_current_uid_gid();
+    pid = xmonitor_get_pid();
 
-    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
         xmonitor_update_u64(&fill->account_page_dirtied, 1);
-        printk("account_page_dirtied pcomm: '%s' pid: %d value: %lu", key.comm,
-               key.pid, fill->account_page_dirtied);
-        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
+        bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
+        printk("xmonitor update account_page_dirtied pcomm: '%s' pid: %d value: %lu",
+               fill->comm, pid, fill->account_page_dirtied);
+
     } else {
         struct cachestat_value init_value = {
             .account_page_dirtied = 1,
         };
         init_value.ip_account_page_dirtied = PT_REGS_IP(ctx);
+        init_value.uid                     = (uid_t)bpf_get_current_uid_gid();
+        // 得到应用程序名
+        bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
         ret =
-            bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_NOEXIST);
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
-            printk("xmonitor account_page_dirtied add new pcomm: '%s' pid: %d successed",
-                   key.comm, key.pid);
+            printk(
+                "xmonitor account_page_dirtied add new pcomm: '%s' pid: %d successed",
+                init_value.comm, pid);
         }
     }
     return 0;
@@ -233,92 +222,61 @@ SEC("kprobe/mark_buffer_dirty")
 __s32 xmonitor_mark_buffer_dirty(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    struct cachestat_key    key = {};
+    __s32                   pid;
     struct cachestat_value *fill;
 
-    // 得到应用程序名
-    bpf_get_current_comm(&key.comm, sizeof(key.comm));
-
-    if (filter_out_symbol(key.comm)) {
-        return 0;
-    }
-
     // 得到进程ID
-    key.pid = xmonitor_get_pid();
-    // 得到用户ID
-    key.uid = (uid_t)bpf_get_current_uid_gid();
+    pid = xmonitor_get_pid();
 
-    fill = bpf_map_lookup_elem(&cachestat_map, &key);
+    fill = bpf_map_lookup_elem(&cachestat_map, &pid);
     if (fill) {
         xmonitor_update_u64(&fill->mark_buffer_dirty, 1);
-        printk("mark_buffer_dirty pcomm: '%s' pid: %d value: %lu", key.comm,
-               key.pid, fill->mark_buffer_dirty);
-        //bpf_map_update_elem(&cachestat_map, &key, value, BPF_EXIST);
+        // 有可能因为execve导致comm改变
+        bpf_get_current_comm(&fill->comm, sizeof(fill->comm));
+        printk("xmonitor update mark_buffer_dirty pcomm: '%s' pid: %d value: %lu", fill->comm,
+               pid, fill->mark_buffer_dirty);
+        //bpf_map_update_elem(&cachestat_map, &pid, fill, BPF_ANY);
     } else {
         struct cachestat_value init_value = {
             .mark_buffer_dirty = 1,
         };
         init_value.ip_mark_buffer_dirty = PT_REGS_IP(ctx);
+        init_value.uid                  = (uid_t)bpf_get_current_uid_gid();
+        // 得到应用程序名
+        bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
         ret =
-            bpf_map_update_elem(&cachestat_map, &key, &init_value, BPF_NOEXIST);
+            bpf_map_update_elem(&cachestat_map, &pid, &init_value, BPF_NOEXIST);
         if (0 == ret) {
             printk(
                 "xmonitor mark_buffer_dirty add new pcomm: '%s' pid: %d successed",
-                key.comm, key.pid);
+                init_value.comm, pid);
         }
     }
     return 0;
 }
 
-#define PROG(tpfn)                                                                               \
-    __s32 __##tpfn(void *ctx)                                                                    \
-    {                                                                                            \
-        struct cachestat_key key = {};                                                           \
-        struct task_struct  *task =                                                              \
-            (struct task_struct *)bpf_get_current_task();                                        \
-                                                                                                 \
-        bpf_get_current_comm(&key.comm, sizeof(key.comm));                                       \
-        key.pid   = xmonitor_get_pid();                                                          \
-        key.uid   = (uid_t)bpf_get_current_uid_gid();                                            \
-        __s32 ret = bpf_map_delete_elem(&cachestat_map, &key);                                   \
-        if (0 == ret) {                                                                          \
-            printk(                                                                              \
-                "xmonitor pcomm: '%s' pid: %d uid: %d exit. remove element from cachestat_map.", \
-                key.comm, key.pid, key.uid);                                                     \
-            if (task) {                                                                          \
-                __s32 exit_code;                                                                 \
-                bpf_probe_read_kernel(&exit_code, sizeof(exit_code),                             \
-                                      &task->exit_code);                                         \
-                printk("xmonitor pcomm: '%s' pid: %d exit_code: %d", key.comm,                   \
-                       key.pid, exit_code);                                                      \
-            }                                                                                    \
-        }                                                                                        \
-        return 0;                                                                                \
+#define PROG(tpfn)                                                                                \
+    __s32 __##tpfn(void *ctx)                                                                     \
+    {                                                                                             \
+        __s32 pid = xmonitor_get_pid();                                                           \
+        char  comm[TASK_COMM_LEN];                                                                \
+        bpf_get_current_comm(&comm, sizeof(comm));                                                \
+                                                                                                  \
+        __s32 ret = bpf_map_delete_elem(&cachestat_map, &pid);                                    \
+        if (0 == ret) {                                                                           \
+            struct task_struct *task =                                                            \
+                (struct task_struct *)bpf_get_current_task();                                     \
+            __s32 exit_code;                                                                      \
+            bpf_probe_read_kernel(&exit_code, sizeof(exit_code),                                  \
+                                  &task->exit_code);                                              \
+                                                                                                  \
+            printk(                                                                               \
+                "xmonitor pcomm: '%s' pid: %d exit_code: %d. remove element from cachestat_map.", \
+                comm, pid, exit_code);                                                            \
+        }                                                                                         \
+        return 0;                                                                                 \
     }
-
-// SEC("tracepoint/sched/sched_process_exit")
-// __s32 xmonitor_sched_process_exit(void *ctx)
-// {
-//     struct cachestat_key key = {};
-
-//     bpf_get_current_comm(&key.comm, sizeof(key.comm));
-//     key.pid = (pid_t)bpf_get_current_pid_tgid();
-//     key.uid = (uid_t)bpf_get_current_uid_gid();
-
-//     __s32 ret = bpf_map_delete_elem(&cachestat_map, &key);
-//     if (0 == ret) {
-//         printk(
-//             "pcomm: '%s' pid: %d uid: %d exit. remove element from cachestat_map.",
-//             key.comm, key.pid, key.uid);
-//     } else {
-//         printk(
-//             "pcomm: '%s' pid: %d exit. remove element from cachestat_map failed. ret: %d",
-//             key.comm, key.pid, ret);
-//     }
-
-//     return 0;
-// }
 
 SEC("tracepoint/sched/sched_process_exit")
 PROG(xmonitor_sched_process_exit)
