@@ -42,7 +42,7 @@ struct bpf_map_def SEC("maps") cachestat_map = {
 #else
     .type = BPF_MAP_TYPE_PERCPU_HASH,
 #endif
-    .key_size    = sizeof(struct cachestat_key),
+    .key_size    = sizeof(__u32),
     .value_size  = sizeof(struct cachestat_value),
     .max_entries = CACHE_STATE_MAX_SIZE,
 };

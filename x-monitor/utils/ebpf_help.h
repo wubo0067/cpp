@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdarg.h>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>

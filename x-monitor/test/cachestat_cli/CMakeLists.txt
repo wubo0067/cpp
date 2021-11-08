@@ -4,11 +4,7 @@ AUX_SOURCE_DIRECTORY(. cachestat_cli_srcs)
 set(EBPF_HELPER_OBJS
 	${KERNEL_DIR}/tools/testing/selftests/bpf/trace_helpers.o)
 
-include_directories("${KERNEL_DIR}/usr/include"
-                    "${KERNEL_DIR}/tools/include"
-                    "${KERNEL_DIR}/tools/perf"
-                    "${KERNEL_DIR}/tools/lib"
-                    "${KERNEL_DIR}/tools/testing/selftests/bpf")
+include_directories("${EBPF_USER_INCLUDE_DIRS}")
 
 link_directories("${KERNEL_DIR}/tools/lib/bpf")
 
