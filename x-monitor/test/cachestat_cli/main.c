@@ -6,11 +6,13 @@
  */
 
 #include "utils/common.h"
-#include "utils/ebpf_help.h"
+#include "utils/x_ebpf.h"
 #include "utils/resource.h"
 
+#include "cachestat_skel.h"
+
 const char *const cachestat_kern_obj =
-    "../collectors/ebpf/kernel/ebpf_cachestate_kern.5.12.o";
+    "../collectors/ebpf/kernel/ebpf_cachestat_kern.5.12.o";
 
 #define CLEAR() printf("\e[1;1H\e[2J")
 
