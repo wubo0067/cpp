@@ -75,7 +75,7 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     user_stackid =
         bpf_get_stackid(ctx, &process_stack_map, USER_STACKID_FLAGS);
 
-    if (stack_value.kern_stackid < 0 && stack_value.user_stackid < 0) {
+    if (kern_stackid < 0 && user_stackid < 0) {
         printk("CPU-%d period %lld ip %llx", cpuid, ctx->sample_period,
                PT_REGS_IP(&ctx->regs));
         return 0;
@@ -88,8 +88,8 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     ret = bpf_perf_prog_read_value(ctx, (void *)&perf_value_buf,
                                    sizeof(struct bpf_perf_event_value));
     if (!ret)
-        printk("Time Enabled: %llu, Time Running: %llu", value_buf.enabled,
-               value_buf.running);
+        printk("Time Enabled: %llu, Time Running: %llu", perf_value_buf.enabled,
+               perf_value_buf.running);
     else
         printk("Get Time Failed, ErrCode: %d", ret);
 
@@ -97,7 +97,7 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     if(value) {
         value->count++;   
     } else {
-        bpf_get_current_comm(init_value.comm, sizeof(stack_value.comm));
+        bpf_get_current_comm(init_value.comm, sizeof(init_value.comm));
         init_value.kern_stackid = kern_stackid;
         init_value.user_stackid = user_stackid;
         init_value.count = 1;
