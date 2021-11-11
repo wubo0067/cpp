@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-02 14:01:24 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-05 17:56:21
+ * @Last Modified time: 2021-11-11 11:30:08
  */
 #include "xmonitor_bpf_helper.h"
 
@@ -106,7 +106,7 @@ static __s32 filter_out_symbol(char comm[TASK_COMM_LEN])
  *
  ***********************************************************************************/
 SEC("kprobe/add_to_page_cache_lru")
-__s32 xmonitor_add_to_page_cache_lru(struct pt_regs *ctx)
+__s32 xmonitor_bpf_add_to_page_cache_lru(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
     __s32                   pid;
@@ -144,7 +144,7 @@ __s32 xmonitor_add_to_page_cache_lru(struct pt_regs *ctx)
 }
 
 SEC("kprobe/mark_page_accessed")
-__s32 xmonitor_mark_page_accessed(struct pt_regs *ctx)
+__s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
     __s32                   pid;
@@ -182,7 +182,7 @@ __s32 xmonitor_mark_page_accessed(struct pt_regs *ctx)
 }
 
 SEC("kprobe/account_page_dirtied")
-__s32 xmonitor_account_page_dirtied(struct pt_regs *ctx)
+__s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
     __s32                   pid;
@@ -219,7 +219,7 @@ __s32 xmonitor_account_page_dirtied(struct pt_regs *ctx)
 }
 
 SEC("kprobe/mark_buffer_dirty")
-__s32 xmonitor_mark_buffer_dirty(struct pt_regs *ctx)
+__s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
     __s32                   pid;
@@ -256,33 +256,33 @@ __s32 xmonitor_mark_buffer_dirty(struct pt_regs *ctx)
     return 0;
 }
 
-#define PROG(tpfn)                                                                                \
-    __s32 __##tpfn(void *ctx)                                                                     \
-    {                                                                                             \
-        __s32 pid = xmonitor_get_pid();                                                           \
-        char  comm[TASK_COMM_LEN];                                                                \
-        bpf_get_current_comm(&comm, sizeof(comm));                                                \
-                                                                                                  \
-        __s32 ret = bpf_map_delete_elem(&cachestat_map, &pid);                                    \
-        if (0 == ret) {                                                                           \
-            struct task_struct *task =                                                            \
-                (struct task_struct *)bpf_get_current_task();                                     \
-            __s32 exit_code;                                                                      \
-            bpf_probe_read_kernel(&exit_code, sizeof(exit_code),                                  \
-                                  &task->exit_code);                                              \
-                                                                                                  \
-            printk(                                                                               \
-                "xmonitor pcomm: '%s' pid: %d exit_code: %d. remove element from cachestat_map.", \
-                comm, pid, exit_code);                                                            \
-        }                                                                                         \
-        return 0;                                                                                 \
-    }
+// #define PROG(tpfn)                                                                                \
+//     __s32 __##tpfn(void *ctx)                                                                     \
+//     {                                                                                             \
+//         __s32 pid = xmonitor_get_pid();                                                           \
+//         char  comm[TASK_COMM_LEN];                                                                \
+//         bpf_get_current_comm(&comm, sizeof(comm));                                                \
+//                                                                                                   \
+//         __s32 ret = bpf_map_delete_elem(&cachestat_map, &pid);                                    \
+//         if (0 == ret) {                                                                           \
+//             struct task_struct *task =                                                            \
+//                 (struct task_struct *)bpf_get_current_task();                                     \
+//             __s32 exit_code;                                                                      \
+//             bpf_probe_read_kernel(&exit_code, sizeof(exit_code),                                  \
+//                                   &task->exit_code);                                              \
+//                                                                                                   \
+//             printk(                                                                               \
+//                 "xmonitor pcomm: '%s' pid: %d exit_code: %d. remove element from cachestat_map.", \
+//                 comm, pid, exit_code);                                                            \
+//         }                                                                                         \
+//         return 0;                                                                                 \
+//     }
 
 SEC("tracepoint/sched/sched_process_exit")
-PROG(xmonitor_sched_process_exit)
+PROCESS_EXIT_BPF_PROG(xmonitor_bpf_cs_sched_process_exit, cachestat_map)
 
 SEC("tracepoint/sched/sched_process_free")
-PROG(xmonitor_sched_process_free)
+PROCESS_EXIT_BPF_PROG(xmonitor_bpf_cs_sched_process_free, cachestat_map)
 
 char           _license[] SEC("license") = "GPL";
 __u32 _version SEC("version")            = LINUX_VERSION_CODE;

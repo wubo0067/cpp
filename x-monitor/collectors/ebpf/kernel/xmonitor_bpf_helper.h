@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-02 15:08:24 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-05 15:18:22
+ * @Last Modified time: 2021-11-11 11:31:30
  */
 
 #pragma once
@@ -22,6 +22,28 @@
         char ____fmt[] = fmt;                                                  \
         bpf_trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);             \
     })
+
+#define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                                 \
+    __s32 __##tpfn(void *ctx)                                                                 \
+    {                                                                                         \
+        __s32 pid = xmonitor_get_pid();                                                       \
+        char  comm[TASK_COMM_LEN];                                                            \
+        bpf_get_current_comm(&comm, sizeof(comm));                                            \
+                                                                                              \
+        __s32 ret = bpf_map_delete_elem(&hash_map, &pid);                                     \
+        if (0 == ret) {                                                                       \
+            struct task_struct *task =                                                        \
+                (struct task_struct *)bpf_get_current_task();                                 \
+            __s32 exit_code;                                                                  \
+            bpf_probe_read_kernel(&exit_code, sizeof(exit_code),                              \
+                                  &task->exit_code);                                          \
+                                                                                              \
+            printk(                                                                           \
+                "xmonitor pcomm: '%s' pid: %d exit_code: %d. remove element from hash_map.",  \
+                comm, pid, exit_code);                                                        \
+        }                                                                                     \
+        return 0;                                                                             \
+    }    
 
 static __always_inline void xmonitor_update_u64(__u64 *res, __u64 value)
 {
