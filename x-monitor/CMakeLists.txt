@@ -49,10 +49,10 @@ link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
 set(EXTRA_LIBS "libjson-c.a" "libconfig.a" "libzlog.a" "libcollectc.a")
 
 # 自定义宏
-add_definitions(
-        -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg"
-        -DLOG_DIR="/usr/log/x-monitor"
-)
+# add_definitions(
+#         -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg"
+#         -DLOG_DIR="/usr/log/x-monitor"
+# )
 
 # 项目子目录
 add_subdirectory(utils)
@@ -76,5 +76,6 @@ add_executable(x-monitor main.c
                         ${PLUGINSD_FILES}
                         ${APPCONFIG_FILES}
                         )
+target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")                        
                         
 target_link_libraries(x-monitor xmonitor-utils ${EXTRA_LIBS} pthread z m)

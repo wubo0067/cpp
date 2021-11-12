@@ -2,12 +2,13 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-12 10:13:05 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-12 11:38:14
+ * @Last Modified time: 2021-11-12 17:23:50
  */
 
 #include "utils/common.h"
 #include "utils/x_ebpf.h"
 #include "utils/resource.h"
+#include "utils/debug.h"
 
 #include <linux/perf_event.h>
 
@@ -21,7 +22,7 @@ static int32_t           bpf_map_fd[2];
 static void __sig_handler(int sig)
 {
     __sig_exit = 1;
-    fprintf(stderr, "SIGINT/SIGTERM received, exiting...\n");
+    debug("SIGINT/SIGTERM received, exiting...");
 }
 
 static int32_t open_perf_event(pid_t pid, struct bpf_program *prog,
@@ -50,7 +51,7 @@ static int32_t open_perf_event(pid_t pid, struct bpf_program *prog,
         return -1;
     }
 
-    fprintf(stderr, "open_perf_event successed\n");
+    debug("open_perf_event successed");
     return pmu_fd;
 }
 
@@ -69,11 +70,13 @@ int32_t main(int32_t argc, char **argv)
         return -1;
     }
 
+    debugLevel = 9;
+    debugFile  = fdopen(STDOUT_FILENO, "w");
+
     bpf_kern_o = argv[1];
     pid        = strtol(argv[2], NULL, 10);
 
-    fprintf(stderr, "Loading BPF object file: %s, target pid: %d\n", bpf_kern_o,
-            pid);
+    debug("Loading BPF object file: %s, target pid: %d\n", bpf_kern_o, pid);
 
     if (load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
@@ -126,7 +129,7 @@ int32_t main(int32_t argc, char **argv)
         section_name = bpf_program__section_name(prog);
         prog_name    = bpf_program__name(prog);
 
-        fprintf(stdout, "prog: %s section: %s\n", prog_name, section_name);
+        debug("prog: %s section: %s", prog_name, section_name);
 
         if (strcmp(prog_name, "xmonitor_bpf_collect_stack_traces") == 0 &&
             0 == strcmp(section_name, "perf_event")) {
@@ -146,8 +149,7 @@ int32_t main(int32_t argc, char **argv)
                 link = NULL;
                 goto cleanup;
             }
-            fprintf(stderr, "section: %s bpf program attach successed\n",
-                    section_name);
+            debug("section: %s bpf program attach successed", section_name);
         }
     }
 
@@ -173,6 +175,7 @@ cleanup:
         close(pmu_fd);
     }
 
-    fprintf(stdout, "%s exit\n", argv[0]);
+    debug("%s exit", argv[0]);
+    debugClose();
     return 0;
 }
