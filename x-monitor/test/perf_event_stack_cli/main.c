@@ -2,14 +2,17 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-12 10:13:05 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-12 11:10:24
+ * @Last Modified time: 2021-11-12 11:38:14
  */
 
 #include "utils/common.h"
 #include "utils/x_ebpf.h"
 #include "utils/resource.h"
 
+#include <linux/perf_event.h>
+
 #define BPF_LINKS_COUNT 2
+#define SAMPLE_FREQ 50
 
 static const char *const __default_kern_obj = "perf_event_stack_kern.o";
 static sig_atomic_t      __sig_exit         = 0;
@@ -21,21 +24,56 @@ static void __sig_handler(int sig)
     fprintf(stderr, "SIGINT/SIGTERM received, exiting...\n");
 }
 
-int32_t main(int32_t argc, char **argv)
+static int32_t open_perf_event(pid_t pid, struct bpf_program *prog,
+                               struct bpf_link **p_perf_event_link)
 {
-    int32_t             j = 0;
-    int32_t             ret;
-    struct bpf_object  *obj;
-    struct bpf_program *prog;
-    struct bpf_link    *link, *perf_event_link;
-    const char         *section;
+    int32_t pmu_fd = -1;
 
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s %s\n", argv[0], __default_kern_obj);
+    struct perf_event_attr attr_type_sw = {
+        .sample_freq = SAMPLE_FREQ, // 采样频率
+        .freq        = 1,
+        .type        = PERF_TYPE_SOFTWARE,
+        .config      = PERF_COUNT_SW_CPU_CLOCK,
+    };
+
+    pmu_fd = sys_perf_event_open(&attr_type_sw, pid, -1, -1, 0);
+    if (pmu_fd < 0) {
+        fprintf(stderr, "sys_perf_event_open failed. %s\n", strerror(errno));
         return -1;
     }
 
-    const char *bpf_kern_o = argv[1];
+    *p_perf_event_link = bpf_program__attach_perf_event(prog, pmu_fd);
+    if (libbpf_get_error(*p_perf_event_link)) {
+        fprintf(stderr, "bpf_program__attach_perf_event failed\n");
+        close(pmu_fd);
+        *p_perf_event_link = NULL;
+        return -1;
+    }
+
+    fprintf(stderr, "open_perf_event successed\n");
+    return pmu_fd;
+}
+
+int32_t main(int32_t argc, char **argv)
+{
+    int32_t             ret, pmu_fd;
+    pid_t               pid;
+    struct bpf_object  *obj;
+    struct bpf_program *prog;
+    struct bpf_link    *link = NULL, *perf_event_link = NULL;
+    const char         *section_name, *prog_name;
+    const char         *bpf_kern_o;
+
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s %s pid\n", argv[0], __default_kern_obj);
+        return -1;
+    }
+
+    bpf_kern_o = argv[1];
+    pid        = strtol(argv[2], NULL, 10);
+
+    fprintf(stderr, "Loading BPF object file: %s, target pid: %d\n", bpf_kern_o,
+            pid);
 
     if (load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
@@ -85,20 +123,31 @@ int32_t main(int32_t argc, char **argv)
 
     bpf_object__for_each_program(prog, obj)
     {
-        section = bpf_program__section_name(prog);
-        fprintf(stdout, "[%d] section: %s\n", j, section);
+        section_name = bpf_program__section_name(prog);
+        prog_name    = bpf_program__name(prog);
 
-        if (0 == strcmp(section, "tracepoint/sched/sched_process_exit")) {
+        fprintf(stdout, "prog: %s section: %s\n", prog_name, section_name);
+
+        if (strcmp(prog_name, "xmonitor_bpf_collect_stack_traces") == 0 &&
+            0 == strcmp(section_name, "perf_event")) {
+            // 打开perf event
+            if ((pmu_fd = open_perf_event(pid, prog, &perf_event_link)) < 0) {
+                goto cleanup;
+            }
+        }
+
+        if (0 == strcmp(section_name, "tracepoint/sched/sched_process_exit") &&
+            0 == strcmp(prog_name, "__xmonitor_bpf_stack_sched_process_exit")) {
             link = bpf_program__attach(prog);
 
             if (libbpf_get_error(link)) {
                 fprintf(stderr, "section: %s bpf_program__attach failed\n",
-                        section);
+                        section_name);
                 link = NULL;
                 goto cleanup;
             }
             fprintf(stderr, "section: %s bpf program attach successed\n",
-                    section);
+                    section_name);
         }
     }
 
@@ -119,6 +168,10 @@ cleanup:
     }
 
     bpf_object__close(obj);
+
+    if (pmu_fd > 0) {
+        close(pmu_fd);
+    }
 
     fprintf(stdout, "%s exit\n", argv[0]);
     return 0;
