@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-11 10:35:37 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-11 11:45:16
+ * @Last Modified time: 2021-11-12 10:41:09
  */
 
 #include "xmonitor_bpf_helper.h"
@@ -31,7 +31,7 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
     __uint(key_size, sizeof(__u32));
-    __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64));
+    __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64)); // 堆栈的每一层
     __uint(max_entries, roundup_pow_of_two(10240));
 } process_stack_map SEC(".maps");
 
@@ -70,10 +70,8 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
         return 0;
 
     // 获取堆栈信息，堆栈id放到value中，堆栈信息放到stack_map中
-    kern_stackid =
-        bpf_get_stackid(ctx, &process_stack_map, KERN_STACKID_FLAGS);
-    user_stackid =
-        bpf_get_stackid(ctx, &process_stack_map, USER_STACKID_FLAGS);
+    kern_stackid = bpf_get_stackid(ctx, &process_stack_map, KERN_STACKID_FLAGS);
+    user_stackid = bpf_get_stackid(ctx, &process_stack_map, USER_STACKID_FLAGS);
 
     if (kern_stackid < 0 && user_stackid < 0) {
         printk("CPU-%d period %lld ip %llx", cpuid, ctx->sample_period,
@@ -94,21 +92,22 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
         printk("Get Time Failed, ErrCode: %d", ret);
 
     value = bpf_map_lookup_elem(&process_stack_count, &pid);
-    if(value) {
-        value->count++;   
+    if (value) {
+        value->count++;
     } else {
         bpf_get_current_comm(init_value.comm, sizeof(init_value.comm));
         init_value.kern_stackid = kern_stackid;
         init_value.user_stackid = user_stackid;
-        init_value.count = 1;
-        bpf_map_update_elem(&process_stack_count, &pid, &init_value, BPF_NOEXIST);
+        init_value.count        = 1;
+        bpf_map_update_elem(&process_stack_count, &pid, &init_value,
+                            BPF_NOEXIST);
     }
 
     return 0;
 }
 
 SEC("tracepoint/sched/sched_process_exit")
-PROCESS_EXIT_BPF_PROG(xmonitor_bpf_pes_sched_process_exit, process_stack_count)
+PROCESS_EXIT_BPF_PROG(xmonitor_bpf_stack_sched_process_exit, process_stack_count)
 
 char           _license[] SEC("license") = "GPL";
 __u32 _version SEC("version")            = LINUX_VERSION_CODE;

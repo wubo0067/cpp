@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-03 11:23:12 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-05 17:41:58
+ * @Last Modified time: 2021-11-12 11:05:34
  */
 
 #include "utils/common.h"
@@ -75,7 +75,7 @@ int32_t main(int32_t argc, char **argv)
     obj = bpf_object__open_file(bpf_kern_o, NULL);
     if (libbpf_get_error(obj)) {
         fprintf(stderr, "ERROR: opening BPF object file '%s' failed\n",
-                cachestat_kern_obj);
+                bpf_kern_o);
         ret = -2;
         goto cleanup;
     }

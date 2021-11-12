@@ -58,6 +58,7 @@ add_definitions(
 add_subdirectory(utils)
 add_subdirectory(test/construct_init)
 add_subdirectory(test/cachestat_cli)
+add_subdirectory(test/perf_event_stack_cli)
 
 # 子目录源代码
 set(PLUGINSD_FILES
