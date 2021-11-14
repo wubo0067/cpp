@@ -1,6 +1,6 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-11-11 10:35:37 
+ * @Author: CALM.WU
+ * @Date: 2021-11-11 10:35:37
  * @Last Modified by: CALM.WU
  * @Last Modified time: 2021-11-12 10:41:09
  */
@@ -9,20 +9,28 @@
 #include <uapi/linux/bpf_perf_event.h>
 #include <uapi/linux/perf_event.h>
 
-struct process_stack_value {
+struct process_stack_key {
     __s32 kern_stackid;
     __s32 user_stackid;
-    char  comm[TASK_COMM_LEN];
-    __u32 count;
+    __u32 pid;
 };
 
+struct process_stack_value {
+    char  comm[TASK_COMM_LEN];
+    __u32 count;
+}
+
+enum pid_filter_key {
+    CTRL_FILTER_PID_1 = 1,
+    CTRL_FILTER_PID_2 = 2,
+}
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 14))
 
 // 堆栈的计数器，数值代表了调用频度，也是火焰图的宽度
 // key = pid
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, __u32);
+    __type(key, struct process_stack_key);
     __type(value, struct process_stack_value);
     __uint(max_entries, roundup_pow_of_two(10240));
 } process_stack_count SEC(".maps");
@@ -35,17 +43,32 @@ struct {
     __uint(max_entries, roundup_pow_of_two(10240));
 } process_stack_map SEC(".maps");
 
+// pid过滤器
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, __u32);
+    __type(value, __u32); // pid
+    __uint(max_entries, 2);
+} pid_filter_map SEC(".maps");
+
 #else
 
-struct bpf_map_def SEC("maps") process_stack_count {
+struct bpf_map_def
+SEC("maps") process_stack_count {
     .type = BPF_MAP_TYPE_HASH, .key_size = sizeof(struct process_stack_key),
-    .value_size = sizeof(__u64), .max_entries = roundup_pow_of_two(10240),
+    .value_size  = sizeof(struct process_stack_value),
+    .max_entries = roundup_pow_of_two(10240),
 };
 
 struct bpf_map_def SEC("maps") process_stack_map {
     .type = BPF_MAP_TYPE_STACK_TRACE, .key_size = sizeof(__u32),
     .value_size  = PERF_MAX_STACK_DEPTH * sizeof(__u64),
     .max_entries = roundup_pow_of_two(10240),
+};
+
+struct bpf_map_def SCE("maps") pid_filter_map {
+    .type = BPF_MAP_TYPE_HASH, .key_size = sizeof(__u32),
+    .value_size = sizeof(__u32), .max_entries = 2,
 };
 
 #endif
@@ -60,6 +83,7 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     __u32 cpuid;
 
     struct bpf_perf_event_value perf_value_buf;
+    struct process_stack_key    key = {};
     struct process_stack_value  init_value, *value;
 
     pid = xmonitor_get_pid();
@@ -91,15 +115,17 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     else
         printk("Get Time Failed, ErrCode: %d", ret);
 
-    value = bpf_map_lookup_elem(&process_stack_count, &pid);
+    key.pid          = pid;
+    key.kern_stackid = kern_stackid;
+    key.user_stackid = user_stackid;
+
+    value = bpf_map_lookup_elem(&process_stack_count, &key);
     if (value) {
         value->count++;
     } else {
         bpf_get_current_comm(init_value.comm, sizeof(init_value.comm));
-        init_value.kern_stackid = kern_stackid;
-        init_value.user_stackid = user_stackid;
-        init_value.count        = 1;
-        bpf_map_update_elem(&process_stack_count, &pid, &init_value,
+        init_value.count = 1;
+        bpf_map_update_elem(&process_stack_count, &key, &init_value,
                             BPF_NOEXIST);
     }
 
@@ -107,7 +133,8 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 }
 
 SEC("tracepoint/sched/sched_process_exit")
-PROCESS_EXIT_BPF_PROG(xmonitor_bpf_stack_sched_process_exit, process_stack_count)
+PROCESS_EXIT_BPF_PROG(xmonitor_bpf_stack_sched_process_exit,
+                      process_stack_count)
 
 char           _license[] SEC("license") = "GPL";
 __u32 _version SEC("version")            = LINUX_VERSION_CODE;
