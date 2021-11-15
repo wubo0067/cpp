@@ -12,7 +12,7 @@
 #include "cachestat_skel.h"
 
 const char *const cachestat_kern_obj =
-    "../collectors/ebpf/kernel/ebpf_cachestat_kern.5.12.o";
+    "../collectors/ebpf/kernel/xmbpf_cachestat_kern.5.12.o";
 
 #define CLEAR() printf("\e[1;1H\e[2J")
 

@@ -16,7 +16,7 @@ add_executable(perf_event_stack_cli ${perf_event_stack_cli_srcs} ${EBPF_HELPER_O
 target_compile_definitions(perf_event_stack_cli PRIVATE -DDEBUG)
 
 add_custom_target(gen_perf_event_stack_skel 
-				COMMAND /usr/sbin/bpftool gen skeleton ${PROJECT_SOURCE_DIR}/collectors/ebpf/kernel/perf_event_stack_kern.o > ${PROJECT_SOURCE_DIR}/test/cachestat_cli/perf_event_stack_skel.h
+				COMMAND /usr/sbin/bpftool gen skeleton ${PROJECT_SOURCE_DIR}/collectors/ebpf/kernel/xmbpf_perf_event_stack_kern.o > ${PROJECT_SOURCE_DIR}/test/cachestat_cli/xmbpf_perf_event_stack_skel.h
 				VERBATIM
 				)
 

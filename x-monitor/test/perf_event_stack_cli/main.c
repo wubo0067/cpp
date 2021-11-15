@@ -12,12 +12,18 @@
 
 #include <linux/perf_event.h>
 
-#define BPF_LINKS_COUNT 2
-#define SAMPLE_FREQ 50
+#define SAMPLE_FREQ 100 // 100hz
+#define MAX_CPU_NR 128
+
+enum pid_filter_key {
+    CTRL_FILTER_PID_1,
+    CTRL_FILTER_PID_2,
+    CTRL_FILTER_PID_END,
+};
 
 static const char *const __default_kern_obj = "perf_event_stack_kern.o";
 static sig_atomic_t      __sig_exit         = 0;
-static int32_t           bpf_map_fd[2];
+static int32_t           bpf_map_fd[3];
 
 static void __sig_handler(int sig)
 {
@@ -25,44 +31,54 @@ static void __sig_handler(int sig)
     debug("SIGINT/SIGTERM received, exiting...");
 }
 
-static int32_t open_perf_event(pid_t pid, struct bpf_program *prog,
-                               struct bpf_link **p_perf_event_link)
+static int32_t open_and_attach_perf_event(struct bpf_program *prog,
+                                          int32_t             nr_cpus,
+                                          struct bpf_link   **perf_event_links)
 {
     int32_t pmu_fd = -1;
 
-    struct perf_event_attr attr_type_sw = {
-        .sample_freq = SAMPLE_FREQ, // 采样频率
-        .freq        = 1,
-        .type        = PERF_TYPE_SOFTWARE,
-        .config      = PERF_COUNT_SW_CPU_CLOCK,
+    struct perf_event_attr attr = {
+        .sample_period = SAMPLE_FREQ, // 采样频率
+        .freq          = 1,           //
+        .type          = PERF_TYPE_SOFTWARE,
+        .config        = PERF_COUNT_SW_CPU_CLOCK,
+        .inherit       = 0,
     };
 
-    pmu_fd = sys_perf_event_open(&attr_type_sw, pid, -1, -1, 0);
-    if (pmu_fd < 0) {
-        fprintf(stderr, "sys_perf_event_open failed. %s\n", strerror(errno));
-        return -1;
+    for (int32_t i = 0; i < nr_cpus; i++) {
+        // 这将测量指定CPU上的所有进程/线程
+        pmu_fd = sys_perf_event_open(&attr, -1, i, -1, 0);
+        if (pmu_fd < 0) {
+            fprintf(stderr, "sys_perf_event_open failed. %s\n",
+                    strerror(errno));
+            return -1;
+        } else {
+            debug("on cpu: %d sys_perf_event_open successed, pmu_fd: %d", i,
+                  pmu_fd);
+        }
+
+        perf_event_links[i] = bpf_program__attach_perf_event(prog, pmu_fd);
+        if (libbpf_get_error(perf_event_links[i])) {
+            fprintf(stderr, "failed to attach perf event on cpu: %d\n", i);
+            close(pmu_fd);
+            perf_event_links[i] = NULL;
+            return -1;
+        } else {
+            debug("prog: '%s' attach perf event on cpu: %d successed",
+                  bpf_program__name(prog), i);
+        }
     }
 
-    *p_perf_event_link = bpf_program__attach_perf_event(prog, pmu_fd);
-    if (libbpf_get_error(*p_perf_event_link)) {
-        fprintf(stderr, "bpf_program__attach_perf_event failed\n");
-        close(pmu_fd);
-        *p_perf_event_link = NULL;
-        return -1;
-    }
-
-    debug("open_perf_event successed");
-    return pmu_fd;
+    return 0;
 }
 
 int32_t main(int32_t argc, char **argv)
 {
     int32_t             ret, pmu_fd;
-    pid_t               pid;
+    pid_t               filter_pid = -1;
     struct bpf_object  *obj;
     struct bpf_program *prog;
-    struct bpf_link    *link = NULL, *perf_event_link = NULL;
-    const char         *section_name, *prog_name;
+    struct bpf_link   **perf_event_links;
     const char         *bpf_kern_o;
 
     if (argc != 3) {
@@ -74,9 +90,15 @@ int32_t main(int32_t argc, char **argv)
     debugFile  = fdopen(STDOUT_FILENO, "w");
 
     bpf_kern_o = argv[1];
-    pid        = strtol(argv[2], NULL, 10);
+    filter_pid = strtol(argv[2], NULL, 10);
 
-    debug("Loading BPF object file: %s, target pid: %d\n", bpf_kern_o, pid);
+    if (filter_pid == 0 || errno == EINVAL || errno == ERANGE) {
+        debug("filter pid %s is invalid", argv[2]);
+        return -1;
+    }
+
+    debug("Loading BPF object file: %s, filter pid: %d\n", bpf_kern_o,
+          filter_pid);
 
     if (load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
@@ -124,33 +146,43 @@ int32_t main(int32_t argc, char **argv)
         goto cleanup;
     }
 
-    bpf_object__for_each_program(prog, obj)
-    {
-        section_name = bpf_program__section_name(prog);
-        prog_name    = bpf_program__name(prog);
+    bpf_map_fd[2] = bpf_object__find_map_fd_by_name(obj, "pid_filter_map");
+    if (bpf_map_fd[1] < 0) {
+        fprintf(stderr,
+                "ERROR: finding a map 'pid_filter_map' in obj file failed\n");
+        goto cleanup;
+    }
 
-        debug("prog: %s section: %s", prog_name, section_name);
+    // 设置过滤的pid
+    enum pid_filter_key filter_pid_key = CTRL_FILTER_PID_1;
+    ret = bpf_map_update_elem(bpf_map_fd[2], &filter_pid_key, &filter_pid,
+                              BPF_ANY);
+    if (0 != ret) {
+        fprintf(stderr, "ERROR: bpf_map_update_elem failed, ret: %d\n", ret);
+        goto cleanup;
+    }
 
-        if (strcmp(prog_name, "xmonitor_bpf_collect_stack_traces") == 0 &&
-            0 == strcmp(section_name, "perf_event")) {
-            // 打开perf event
-            if ((pmu_fd = open_perf_event(pid, prog, &perf_event_link)) < 0) {
-                goto cleanup;
-            }
-        }
+    // 打开perf event
+    prog = bpf_object__find_program_by_name(
+        obj, "xmonitor_bpf_collect_stack_traces");
+    if (!prog) {
+        fprintf(
+            stderr,
+            "finding prog: 'xmonitor_bpf_collect_stack_traces' in obj file failed\n");
+        goto cleanup;
+    }
 
-        if (0 == strcmp(section_name, "tracepoint/sched/sched_process_exit") &&
-            0 == strcmp(prog_name, "__xmonitor_bpf_stack_sched_process_exit")) {
-            link = bpf_program__attach(prog);
+    int nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    perf_event_links =
+        (struct bpf_link **)calloc(nr_cpus, sizeof(struct bpf_link *));
+    debug("nr cpu count: %d", nr_cpus);
 
-            if (libbpf_get_error(link)) {
-                fprintf(stderr, "section: %s bpf_program__attach failed\n",
-                        section_name);
-                link = NULL;
-                goto cleanup;
-            }
-            debug("section: %s bpf program attach successed", section_name);
-        }
+    if ((pmu_fd = open_and_attach_perf_event(prog, nr_cpus, perf_event_links)) <
+        0) {
+        goto cleanup;
+    } else {
+        debug("open perf event with prog: '%s' successed",
+              bpf_program__name(prog));
     }
 
     signal(SIGINT, __sig_handler);
@@ -161,19 +193,16 @@ int32_t main(int32_t argc, char **argv)
     }
 
 cleanup:
-    if (link) {
-        bpf_link__destroy(link);
-    }
-
-    if (perf_event_link) {
-        bpf_link__destroy(perf_event_link);
+    if (perf_event_links) {
+        for (int32_t i = 0; i < nr_cpus; i++) {
+            if (perf_event_links[i]) {
+                bpf_link__destroy(perf_event_links[i]);
+            }
+        }
+        free(perf_event_links);
     }
 
     bpf_object__close(obj);
-
-    if (pmu_fd > 0) {
-        close(pmu_fd);
-    }
 
     debug("%s exit", argv[0]);
     debugClose();

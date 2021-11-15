@@ -51,4 +51,4 @@ NAME=${OBJECTNAME%_*}
 
 KNAME=$(select_kernel_version "${1}" "${2}")
 
-cp "${NAME}_kern.o" "./ebpf_${NAME}_kern.${KNAME}.o"
+cp "${NAME}_kern.o" "./${NAME}_kern.${KNAME}.o"
