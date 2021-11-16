@@ -109,7 +109,7 @@ SEC("kprobe/add_to_page_cache_lru")
 __s32 xmonitor_bpf_add_to_page_cache_lru(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    __s32                   pid;
+    __u32                   pid;
     struct cachestat_value *fill;
 
     // 得到进程ID
@@ -147,7 +147,7 @@ SEC("kprobe/mark_page_accessed")
 __s32 xmonitor_bpf_mark_page_accessed(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    __s32                   pid;
+    __u32                   pid;
     struct cachestat_value *fill;
 
     // 得到进程ID
@@ -185,7 +185,7 @@ SEC("kprobe/account_page_dirtied")
 __s32 xmonitor_bpf_account_page_dirtied(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    __s32                   pid;
+    __u32                   pid;
     struct cachestat_value *fill;
 
     // 得到进程ID
@@ -222,7 +222,7 @@ SEC("kprobe/mark_buffer_dirty")
 __s32 xmonitor_bpf_mark_buffer_dirty(struct pt_regs *ctx)
 {
     __s32                   ret = 0;
-    __s32                   pid;
+    __u32                   pid;
     struct cachestat_value *fill;
 
     // 得到进程ID

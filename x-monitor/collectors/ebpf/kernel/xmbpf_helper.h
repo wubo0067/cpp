@@ -26,7 +26,7 @@
 #define PROCESS_EXIT_BPF_PROG(tpfn, hash_map)                                                 \
     __s32 __##tpfn(void *ctx)                                                                 \
     {                                                                                         \
-        __s32 pid = xmonitor_get_pid();                                                       \
+        __u32 pid = xmonitor_get_pid();                                                       \
         char  comm[TASK_COMM_LEN];                                                            \
         bpf_get_current_comm(&comm, sizeof(comm));                                            \
                                                                                               \
@@ -53,7 +53,7 @@ static __always_inline void xmonitor_update_u64(__u64 *res, __u64 value)
     }
 }
 
-static __always_inline __s32 xmonitor_get_pid()
+static __always_inline __u32 xmonitor_get_pid()
 {
     return bpf_get_current_pid_tgid() >> 32;
 }

@@ -9,6 +9,9 @@
 #include <uapi/linux/bpf_perf_event.h>
 #include <uapi/linux/perf_event.h>
 
+// pid过滤器
+#define __FILTER_CONTENT_LEN 128
+
 struct process_stack_key {
     __s32 kern_stackid;
     __s32 user_stackid;
@@ -20,11 +23,16 @@ struct process_stack_value {
     __u32 count;
 };
 
-enum pid_filter_key {
-    CTRL_FILTER_PID_1,
-    CTRL_FILTER_PID_2,
-    CTRL_FILTER_PID_END,
+enum ctrl_filter_key {
+    CTRL_FILTER,
+    CTRL_FILTER_END,
 };
+
+struct ctrl_filter_value {
+    __u32 filter_pid;
+    char  filter_content[__FILTER_CONTENT_LEN];
+};
+
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(5, 4, 14))
 
 // 堆栈的计数器，数值代表了调用频度，也是火焰图的宽度
@@ -44,13 +52,12 @@ struct {
     __uint(max_entries, roundup_pow_of_two(10240));
 } process_stack_map SEC(".maps");
 
-// pid过滤器
 struct {
     __uint(type, BPF_MAP_TYPE_ARRAY);
     __type(key, __u32);
-    __type(value, __u32); // pid
-    __uint(max_entries, CTRL_FILTER_PID_END);
-} pid_filter_map SEC(".maps");
+    __type(value, struct ctrl_filter_value); //
+    __uint(max_entries, CTRL_FILTER_END);
+} ctrl_filter_map SEC(".maps");
 
 #else
 
@@ -66,9 +73,10 @@ struct bpf_map_def SEC("maps") process_stack_map {
     .max_entries = roundup_pow_of_two(10240),
 };
 
-struct bpf_map_def SCE("maps") pid_filter_map {
-    .type = BPF_MAP_TYPE_HASH, .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32), .max_entries = 2,
+struct bpf_map_def SCE("maps") ctrl_filter_map {
+    .type = BPF_MAP_TYPE_ARRAY, .key_size = sizeof(__u32),
+    .value_size  = sizeof(struct ctrl_filter_value),
+    .max_entries = CTRL_FILTER_END,
 };
 
 #endif
@@ -79,7 +87,8 @@ struct bpf_map_def SCE("maps") pid_filter_map {
 SEC("perf_event")
 __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 {
-    __s32 pid, ret, kern_stackid, user_stackid;
+    __u32 pid;
+    __s32 ret, kern_stackid, user_stackid;
     __u32 cpuid;
 
     struct bpf_perf_event_value perf_value_buf;
@@ -95,17 +104,21 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     bpf_get_current_comm(init_value.comm, sizeof(init_value.comm));
 
     // 获取过滤的pid
-    __u32  filter_pid_key = CTRL_FILTER_PID_1;
-    __u32 *filter_pid_value =
-        bpf_map_lookup_elem(&pid_filter_map, &filter_pid_key);
-    if (filter_pid_value) {
-        if (*filter_pid_value == 0) {
+    __u32                     filter_key = CTRL_FILTER;
+    struct ctrl_filter_value *ctrl_value =
+        bpf_map_lookup_elem(&ctrl_filter_map, &filter_key);
+
+    if (ctrl_value) {
+        if (ctrl_value->filter_pid == 0) {
             return 0;
         }
-        if (*filter_pid_value != pid) {
+        if (ctrl_value->filter_pid != pid) {
             return 0;
         }
-        printk("xmonitor grab the stack for pid: %d comm: '%s'", pid, init_value.comm);
+        // 用户态的字符串可以传递到内核中
+        printk("xmonitor filter content '%s'", ctrl_value->filter_content);
+        printk("xmonitor grab the stack for pid: %d comm: '%s'",
+               ctrl_value->filter_pid, init_value.comm);
     } else {
         printk(
             "xmonitor CTRL_FILTER_PID_1 not set, So don't have to grab the stack");
@@ -129,7 +142,8 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     }
 
     if (ctx->addr != 0) {
-        printk("xmonitor comm: '%s' pid: %d Address recorded on event: %llx", init_value.comm, pid, ctx->addr);
+        printk("xmonitor comm: '%s' pid: %d Address recorded on event: %llx",
+               init_value.comm, pid, ctx->addr);
     }
 
     ret = bpf_perf_prog_read_value(ctx, (void *)&perf_value_buf,
@@ -162,5 +176,5 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 // PROCESS_EXIT_BPF_PROG(xmonitor_bpf_stack_sched_process_exit,
 //                       process_stack_count)
 
-char _license[] SEC("license") = "GPL";
+char           _license[] SEC("license") = "GPL";
 __u32 _version SEC("version")            = LINUX_VERSION_CODE;

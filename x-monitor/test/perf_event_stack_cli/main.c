@@ -15,10 +15,16 @@
 #define SAMPLE_FREQ 100 // 100hz
 #define MAX_CPU_NR 128
 
-enum pid_filter_key {
-    CTRL_FILTER_PID_1,
-    CTRL_FILTER_PID_2,
-    CTRL_FILTER_PID_END,
+enum ctrl_filter_key {
+    CTRL_FILTER,
+    CTRL_FILTER_END,
+};
+
+#define __FILTER_CONTENT_LEN 128
+
+struct ctrl_filter_value {
+    uint32_t filter_pid;
+    char  filter_content[__FILTER_CONTENT_LEN];
 };
 
 static const char *const __default_kern_obj = "perf_event_stack_kern.o";
@@ -146,21 +152,26 @@ int32_t main(int32_t argc, char **argv)
         goto cleanup;
     }
 
-    bpf_map_fd[2] = bpf_object__find_map_fd_by_name(obj, "pid_filter_map");
+    bpf_map_fd[2] = bpf_object__find_map_fd_by_name(obj, "ctrl_filter_map");
     if (bpf_map_fd[1] < 0) {
         fprintf(stderr,
-                "ERROR: finding a map 'pid_filter_map' in obj file failed\n");
+                "ERROR: finding a map 'ctrl_filter_map' in obj file failed\n");
         goto cleanup;
     }
 
     // 设置过滤的pid
-    enum pid_filter_key filter_pid_key = CTRL_FILTER_PID_1;
-    ret = bpf_map_update_elem(bpf_map_fd[2], &filter_pid_key, &filter_pid,
+    enum ctrl_filter_key filter_key = CTRL_FILTER;
+    struct ctrl_filter_value filter_value = {
+        .filter_pid = filter_pid,
+    };
+    strncpy(filter_value.filter_content, __default_kern_obj, strlen(__default_kern_obj));
+
+    ret = bpf_map_update_elem(bpf_map_fd[2], &filter_key, &filter_value,
                               BPF_ANY);
     if (0 != ret) {
-        fprintf(stderr, "ERROR: bpf_map_update_elem failed, ret: %d\n", ret);
+        fprintf(stderr, "ERROR: bpf_map_update_elem filter value failed, ret: %d\n", ret);
         goto cleanup;
-    }
+    } 
 
     // 打开perf event
     prog = bpf_object__find_program_by_name(
