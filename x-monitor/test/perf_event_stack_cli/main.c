@@ -11,9 +11,11 @@
 #include "utils/debug.h"
 
 #include <linux/perf_event.h>
+#include <bcc/bcc_syms.h>
 
 #define SAMPLE_FREQ 100 // 100hz
 #define MAX_CPU_NR 128
+#define TASK_COMM_LEN 16
 
 enum ctrl_filter_key {
     CTRL_FILTER,
@@ -24,12 +26,24 @@ enum ctrl_filter_key {
 
 struct ctrl_filter_value {
     uint32_t filter_pid;
-    char  filter_content[__FILTER_CONTENT_LEN];
+    char     filter_content[__FILTER_CONTENT_LEN];
+};
+
+struct process_stack_key {
+    uint32_t kern_stackid;
+    uint32_t user_stackid;
+    uint32_t pid;
+};
+
+struct process_stack_value {
+    char     comm[TASK_COMM_LEN];
+    uint32_t count;
 };
 
 static const char *const __default_kern_obj = "perf_event_stack_kern.o";
 static sig_atomic_t      __sig_exit         = 0;
 static int32_t           bpf_map_fd[3];
+static void             *bcc_symcache = NULL;
 
 static void __sig_handler(int sig)
 {
@@ -37,23 +51,24 @@ static void __sig_handler(int sig)
     debug("SIGINT/SIGTERM received, exiting...");
 }
 
-static int32_t open_and_attach_perf_event(struct bpf_program *prog,
-                                          int32_t             nr_cpus,
-                                          struct bpf_link   **perf_event_links)
+static int32_t open_and_attach_perf_event(pid_t pid, struct bpf_program *prog,
+                                          int32_t           nr_cpus,
+                                          struct bpf_link **perf_event_links)
 {
     int32_t pmu_fd = -1;
 
-    struct perf_event_attr attr = {
-        .sample_period = SAMPLE_FREQ, // 采样频率
-        .freq          = 1,           //
-        .type          = PERF_TYPE_SOFTWARE,
-        .config        = PERF_COUNT_SW_CPU_CLOCK,
-        .inherit       = 0,
-    };
+    struct perf_event_attr attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.sample_period = SAMPLE_FREQ; // 采样频率
+    attr.freq          = 1;           //
+    attr.type          = PERF_TYPE_SOFTWARE;
+    attr.config        = PERF_COUNT_SW_CPU_CLOCK;
+    attr.inherit       = 0;
 
     for (int32_t i = 0; i < nr_cpus; i++) {
         // 这将测量指定CPU上的所有进程/线程
-        pmu_fd = sys_perf_event_open(&attr, -1, i, -1, 0);
+        // -1表示所有进程/线程
+        pmu_fd = sys_perf_event_open(&attr, pid, i, -1, 0);
         if (pmu_fd < 0) {
             fprintf(stderr, "sys_perf_event_open failed. %s\n",
                     strerror(errno));
@@ -78,14 +93,81 @@ static int32_t open_and_attach_perf_event(struct bpf_program *prog,
     return 0;
 }
 
+static void print_stack(struct process_stack_key   *key,
+                        struct process_stack_value *value)
+{
+    uint64_t ip[PERF_MAX_STACK_DEPTH] = {};
+    int32_t  i                        = 0;
+    struct bcc_symbol sym;
+
+    debug("\n");
+    debug("<<comm: %s, count: %d>>", value->comm, value->count);
+
+    // 通过key得到内核堆栈id、用户堆栈id，以此从堆栈map中获取堆栈信息
+    // 获取每层的内核堆栈
+    debug("\t<<%20s id: %u>>", "kernel stack", key->kern_stackid);
+    if (bpf_map_lookup_elem(bpf_map_fd[1], &key->kern_stackid, ip) != 0) {
+        // 没有内核堆栈
+        debug("\t---");
+    } else {
+        for (i = PERF_MAX_STACK_DEPTH - 1; i >= 0; i--) {
+            if (ip[i] == 0) {
+                continue;
+            }
+            debug("\t0x%16lx\t%20s", ip[i], bpf_get_ksym_name(ip[i]));
+        }
+    }
+    debug("\t<<%20s id: %u>>", "user stack", key->user_stackid);
+    if (bpf_map_lookup_elem(bpf_map_fd[1], &key->user_stackid, ip) != 0) {
+        // 没有用户堆栈
+        debug("\t%20s", "---");
+    } else {
+        for (i = PERF_MAX_STACK_DEPTH - 1; i >= 0; i--) {
+            if (ip[i] == 0) {
+                continue;
+            }
+            memset(&sym, 0, sizeof(sym));
+            if(0 == bcc_symcache_resolve(bcc_symcache, ip[i], &sym)) {
+                debug("\t0x%016lx\t%20s", ip[i], sym.name);
+            }
+        }
+    }
+}
+
+static void print_stacks()
+{
+    struct process_stack_key   key   = {}, next_key;
+    struct process_stack_value value = {};
+
+    uint32_t stack_id = 0, next_stack_id;
+
+    while (bpf_map_get_next_key(bpf_map_fd[0], &key, &next_key) == 0) {
+        bpf_map_lookup_elem(bpf_map_fd[0], &next_key, &value);
+        print_stack(&next_key, &value);
+        bpf_map_delete_elem(bpf_map_fd[0], &next_key);
+        key = next_key;
+    }
+
+    debug("\n");
+
+    // clear process stack map
+    while (bpf_map_get_next_key(bpf_map_fd[1], &stack_id, &next_stack_id) ==
+           0) {
+        bpf_map_delete_elem(bpf_map_fd[1], &next_key);
+        stack_id = next_stack_id;
+    }
+}
+
 int32_t main(int32_t argc, char **argv)
 {
-    int32_t             ret, pmu_fd;
-    pid_t               filter_pid = -1;
-    struct bpf_object  *obj;
-    struct bpf_program *prog;
-    struct bpf_link   **perf_event_links;
-    const char         *bpf_kern_o;
+    int32_t                  ret, pmu_fd;
+    pid_t                    filter_pid = -1;
+    struct bpf_object       *obj;
+    struct bpf_program      *prog;
+    struct bpf_link        **perf_event_links;
+    const char              *bpf_kern_o;
+    struct ctrl_filter_value filter_value;
+    enum ctrl_filter_key     filter_key;
 
     if (argc != 3) {
         fprintf(stderr, "Usage: %s %s pid\n", argv[0], __default_kern_obj);
@@ -106,10 +188,14 @@ int32_t main(int32_t argc, char **argv)
     debug("Loading BPF object file: %s, filter pid: %d\n", bpf_kern_o,
           filter_pid);
 
+    int nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+
     if (load_kallsyms()) {
         fprintf(stderr, "failed to process /proc/kallsyms\n");
         return -1;
     }
+
+    bcc_symcache = bcc_symcache_new(filter_pid, NULL);
 
     libbpf_set_print(bpf_printf);
 
@@ -160,18 +246,19 @@ int32_t main(int32_t argc, char **argv)
     }
 
     // 设置过滤的pid
-    enum ctrl_filter_key filter_key = CTRL_FILTER;
-    struct ctrl_filter_value filter_value = {
-        .filter_pid = filter_pid,
-    };
-    strncpy(filter_value.filter_content, __default_kern_obj, strlen(__default_kern_obj));
+    filter_key              = CTRL_FILTER;
+    filter_value.filter_pid = filter_pid;
+    strncpy(filter_value.filter_content, __default_kern_obj,
+            strlen(__default_kern_obj));
 
-    ret = bpf_map_update_elem(bpf_map_fd[2], &filter_key, &filter_value,
-                              BPF_ANY);
+    ret =
+        bpf_map_update_elem(bpf_map_fd[2], &filter_key, &filter_value, BPF_ANY);
     if (0 != ret) {
-        fprintf(stderr, "ERROR: bpf_map_update_elem filter value failed, ret: %d\n", ret);
+        fprintf(stderr,
+                "ERROR: bpf_map_update_elem filter value failed, ret: %d\n",
+                ret);
         goto cleanup;
-    } 
+    }
 
     // 打开perf event
     prog = bpf_object__find_program_by_name(
@@ -183,13 +270,12 @@ int32_t main(int32_t argc, char **argv)
         goto cleanup;
     }
 
-    int nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
     perf_event_links =
         (struct bpf_link **)calloc(nr_cpus, sizeof(struct bpf_link *));
     debug("nr cpu count: %d", nr_cpus);
 
-    if ((pmu_fd = open_and_attach_perf_event(prog, nr_cpus, perf_event_links)) <
-        0) {
+    if ((pmu_fd = open_and_attach_perf_event(filter_pid, prog, nr_cpus,
+                                             perf_event_links)) < 0) {
         goto cleanup;
     } else {
         debug("open perf event with prog: '%s' successed",
@@ -200,7 +286,9 @@ int32_t main(int32_t argc, char **argv)
     signal(SIGTERM, __sig_handler);
 
     while (!__sig_exit) {
-        sleep(1);
+        print_stacks();
+        sleep(3);
+        debug("----------------------------");
     }
 
 cleanup:
@@ -214,6 +302,11 @@ cleanup:
     }
 
     bpf_object__close(obj);
+
+    if (bcc_symcache) {
+        bcc_free_symcache(bcc_symcache, filter_pid);
+        bcc_symcache = NULL;
+    }
 
     debug("%s exit", argv[0]);
     debugClose();

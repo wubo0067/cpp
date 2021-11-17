@@ -1,11 +1,15 @@
 # 目录下所有的源代码文件并将列表存储在cachestat_cli_srcs中
 AUX_SOURCE_DIRECTORY(. perf_event_stack_cli_srcs)
+set_source_files_properties(${perf_event_stack_cli_srcs} PROPERTIES LANGUAGE CXX )
 
 set(EBPF_HELPER_OBJS
 	${KERNEL_DIR}/tools/testing/selftests/bpf/trace_helpers.o)
 
 # add_definitions(-DDEBUG)
 
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 11)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 include_directories("${EBPF_USER_INCLUDE_DIRS}")
 
@@ -20,5 +24,5 @@ add_custom_target(gen_perf_event_stack_skel
 				VERBATIM
 				)
 
-target_link_libraries(perf_event_stack_cli xmonitor-utils libbpf.a elf pthread z m) 
+target_link_libraries(perf_event_stack_cli xmonitor-utils libbcc.a libbpf.a elf pthread z m) 
 add_dependencies(perf_event_stack_cli gen_perf_event_stack_skel)  

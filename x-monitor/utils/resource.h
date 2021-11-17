@@ -10,5 +10,13 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int32_t bump_memlock_rlimit(void);
 extern const char *get_username(uid_t uid);
+
+#ifdef __cplusplus
+}
+#endif

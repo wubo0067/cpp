@@ -18,10 +18,16 @@
 #include <bpf/libbpf.h>
 #include <linux/bpf.h>
 #include <linux/ptrace.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <trace_helpers.h>
 
-extern int32_t     bpf_printf(enum libbpf_print_level level, const char *fmt,
-                              va_list args);
+extern int32_t bpf_printf(enum libbpf_print_level level, const char *fmt,
+                          va_list args);
+
 extern const char *bpf_get_ksym_name(uint64_t addr);
 
 struct perf_event_attr;
@@ -32,3 +38,7 @@ static inline int sys_perf_event_open(struct perf_event_attr *attr, pid_t pid,
 {
     return syscall(__NR_perf_event_open, attr, pid, cpu, group_fd, flags);
 }
+
+#ifdef __cplusplus
+}
+#endif

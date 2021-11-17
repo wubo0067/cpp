@@ -13,8 +13,8 @@
 #define __FILTER_CONTENT_LEN 128
 
 struct process_stack_key {
-    __s32 kern_stackid;
-    __s32 user_stackid;
+    __u32 kern_stackid;
+    __u32 user_stackid;
     __u32 pid;
 };
 
@@ -47,7 +47,7 @@ struct {
 // 记录堆栈
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
-    __uint(key_size, sizeof(__u32));
+    __uint(key_size, sizeof(__u32)); // key 是stackid
     __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64)); // 堆栈的每一层
     __uint(max_entries, roundup_pow_of_two(10240));
 } process_stack_map SEC(".maps");
@@ -87,8 +87,7 @@ struct bpf_map_def SCE("maps") ctrl_filter_map {
 SEC("perf_event")
 __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 {
-    __u32 pid;
-    __s32 ret, kern_stackid, user_stackid;
+    __u32 pid, ret, kern_stackid, user_stackid;
     __u32 cpuid;
 
     struct bpf_perf_event_value perf_value_buf;
@@ -116,9 +115,9 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
             return 0;
         }
         // 用户态的字符串可以传递到内核中
-        printk("xmonitor filter content '%s'", ctrl_value->filter_content);
-        printk("xmonitor grab the stack for pid: %d comm: '%s'",
-               ctrl_value->filter_pid, init_value.comm);
+        //  printk("xmonitor filter content '%s'", ctrl_value->filter_content);
+        //  printk("xmonitor grab the stack for pid: %d comm: '%s'",
+        //         ctrl_value->filter_pid, init_value.comm);
     } else {
         printk(
             "xmonitor CTRL_FILTER_PID_1 not set, So don't have to grab the stack");
@@ -158,15 +157,20 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     key.kern_stackid = kern_stackid;
     key.user_stackid = user_stackid;
 
+    printk("xmonitor pid: %u kern_stackid: %u, user_stackid: %u", pid, kern_stackid,
+           user_stackid);
+
     value = bpf_map_lookup_elem(&process_stack_count, &key);
     if (value) {
         // 只有一个prog更新，不用同步
         value->count++;
         //bpf_get_current_comm(&value->comm, sizeof(value->comm));
+        printk("xmonitor pid: %u stack count: %u", pid, value->count);
     } else {
         init_value.count = 1;
         bpf_map_update_elem(&process_stack_count, &key, &init_value,
                             BPF_NOEXIST);
+        printk("xmonitor pid: %u stack count first add");
     }
 
     return 0;
@@ -177,4 +181,4 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 //                       process_stack_count)
 
 char           _license[] SEC("license") = "GPL";
-__u32 _version SEC("version")            = LINUX_VERSION_CODE;
+//__u32 _version SEC("version")            = LINUX_VERSION_CODE;
