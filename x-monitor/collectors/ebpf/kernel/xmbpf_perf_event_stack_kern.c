@@ -100,29 +100,33 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
         return 0;
     }
 
+    //printk("xmonitor pid: %d\n", pid);
+
     bpf_get_current_comm(init_value.comm, sizeof(init_value.comm));
 
     // 获取过滤的pid
-    __u32                     filter_key = CTRL_FILTER;
-    struct ctrl_filter_value *ctrl_value =
-        bpf_map_lookup_elem(&ctrl_filter_map, &filter_key);
+    // __u32                     filter_key = CTRL_FILTER;
+    // struct ctrl_filter_value *ctrl_value =
+    //     bpf_map_lookup_elem(&ctrl_filter_map, &filter_key);
 
-    if (ctrl_value) {
-        if (ctrl_value->filter_pid == 0) {
-            return 0;
-        }
-        if (ctrl_value->filter_pid != pid) {
-            return 0;
-        }
-        // 用户态的字符串可以传递到内核中
-        //  printk("xmonitor filter content '%s'", ctrl_value->filter_content);
-        //  printk("xmonitor grab the stack for pid: %d comm: '%s'",
-        //         ctrl_value->filter_pid, init_value.comm);
-    } else {
-        printk(
-            "xmonitor CTRL_FILTER_PID_1 not set, So don't have to grab the stack");
-        return 0;
-    }
+    // 不要在ebpf程序中过滤，数据通过map发送到user space，在哪里进行过滤。
+    // if (ctrl_value) {
+    //     if (ctrl_value->filter_pid == 0) {
+    //         return 0;
+    //     }
+    //     if (ctrl_value->filter_pid != pid) {
+    //         printk("xmonitor filter_pid: %d Not equal to pid: %d\n", ctrl_value->filter_pid, pid);
+    //         return 0;
+    //     }
+    //     // 用户态的字符串可以传递到内核中
+    //     //  printk("xmonitor filter content '%s'", ctrl_value->filter_content);
+    //     //  printk("xmonitor grab the stack for pid: %d comm: '%s'",
+    //     //         ctrl_value->filter_pid, init_value.comm);
+    // } else {
+    //     printk(
+    //         "xmonitor CTRL_FILTER_PID_1 not set, So don't have to grab the stack");
+    //     return 0;
+    // }
 
     // 得到SMP处理器ID，需要注意，所有eBPF都在禁止抢占的情况下运行，这意味着在eBPF程序的执行过程中，此ID不会改变
     cpuid = bpf_get_smp_processor_id();

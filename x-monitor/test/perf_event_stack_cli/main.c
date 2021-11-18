@@ -59,16 +59,17 @@ static int32_t open_and_attach_perf_event(pid_t pid, struct bpf_program *prog,
 
     struct perf_event_attr attr;
     memset(&attr, 0, sizeof(attr));
-    attr.sample_period = SAMPLE_FREQ; // 采样频率
-    attr.freq          = 1;           //
-    attr.type          = PERF_TYPE_SOFTWARE;
-    attr.config        = PERF_COUNT_SW_CPU_CLOCK;
-    attr.inherit       = 0;
+    attr.sample_freq =
+        SAMPLE_FREQ; // 采样频率，“采样”计数器是每N个事件生成一个中断的计数器，其中N由sample_period给出
+    attr.freq    = 1; //
+    attr.type    = PERF_TYPE_SOFTWARE;
+    attr.config  = PERF_COUNT_SW_CPU_CLOCK;
+    attr.inherit = 0;
 
     for (int32_t i = 0; i < nr_cpus; i++) {
         // 这将测量指定CPU上的所有进程/线程
         // -1表示所有进程/线程
-        pmu_fd = sys_perf_event_open(&attr, pid, i, -1, 0);
+        pmu_fd = sys_perf_event_open(&attr, -1, i, -1, 0);
         if (pmu_fd < 0) {
             fprintf(stderr, "sys_perf_event_open failed. %s\n",
                     strerror(errno));
@@ -96,8 +97,8 @@ static int32_t open_and_attach_perf_event(pid_t pid, struct bpf_program *prog,
 static void print_stack(struct process_stack_key   *key,
                         struct process_stack_value *value)
 {
-    uint64_t ip[PERF_MAX_STACK_DEPTH] = {};
-    int32_t  i                        = 0;
+    uint64_t          ip[PERF_MAX_STACK_DEPTH] = {};
+    int32_t           i                        = 0;
     struct bcc_symbol sym;
 
     debug("\n");
@@ -127,7 +128,7 @@ static void print_stack(struct process_stack_key   *key,
                 continue;
             }
             memset(&sym, 0, sizeof(sym));
-            if(0 == bcc_symcache_resolve(bcc_symcache, ip[i], &sym)) {
+            if (0 == bcc_symcache_resolve(bcc_symcache, ip[i], &sym)) {
                 debug("\t0x%016lx\t%20s", ip[i], sym.name);
             }
         }
