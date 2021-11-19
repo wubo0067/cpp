@@ -2,20 +2,32 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-12 10:13:05 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-12 17:23:50
+ * @Last Modified time: 2021-11-19 14:45:04
  */
+#include <linux/perf_event.h>
+
+#include <bcc/bcc_syms.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <collectc/cc_hashtable.h>
+#ifdef __cplusplus
+}
+#endif
 
 #include "utils/common.h"
 #include "utils/x_ebpf.h"
 #include "utils/resource.h"
 #include "utils/debug.h"
-
-#include <linux/perf_event.h>
-#include <bcc/bcc_syms.h>
+#include "utils/strings.h"
 
 #define SAMPLE_FREQ 100 // 100hz
 #define MAX_CPU_NR 128
 #define TASK_COMM_LEN 16
+#define FILTERPIDS_BUF_SIZE 128
+#define EBPF_KERN_OBJ_BUF_SIZE 256
+#define FILTERPIDS_MAX_COUNT 8
 
 enum ctrl_filter_key {
     CTRL_FILTER,
@@ -42,8 +54,19 @@ struct process_stack_value {
 
 static const char *const __default_kern_obj = "perf_event_stack_kern.o";
 static sig_atomic_t      __sig_exit         = 0;
-static int32_t           bpf_map_fd[3];
-static void             *bcc_symcache = NULL;
+static int32_t           __bpf_map_fd[3];
+static uint64_t          __filter_pids[FILTERPIDS_MAX_COUNT];
+static CC_HashTableConf  __bcc_symcache_tab_conf;
+static CC_HashTable     *__bcc_symcache_tab = NULL;
+
+//getopt_long 返回 int ，而不是 char 。如果 flag(第三个)字段是 NULL(或等效的 0)，那么 val(第四个)字段将被返回
+static struct option long_options[] = {
+    { "kern", required_argument, NULL, 'k' },
+    { "pids", required_argument, NULL, 'p' },
+    { "duration", required_argument, NULL, 'd' },
+    { "help", no_argument, NULL, 'h' },
+    { 0, 0, 0, 0 }
+};
 
 static void __sig_handler(int sig)
 {
@@ -51,9 +74,21 @@ static void __sig_handler(int sig)
     debug("SIGINT/SIGTERM received, exiting...");
 }
 
-static int32_t open_and_attach_perf_event(pid_t pid, struct bpf_program *prog,
-                                          int32_t           nr_cpus,
-                                          struct bpf_link **perf_event_links)
+static int32_t bcc_symcache_tab_key_compare(const void *key1, const void *key2)
+{
+    uint64_t k1 = *(uint64_t *)key1;
+    uint64_t k2 = *(uint64_t *)key2;
+
+    //debug("key1: %llu, key2: %llu", k1, k2);
+    if (k1 != k2) {
+        return 1;
+    }
+    return 0;
+}
+
+static int32_t open_and_attach_perf_event(struct bpf_program *prog,
+                                          int32_t             nr_cpus,
+                                          struct bpf_link   **perf_event_links)
 {
     int32_t pmu_fd = -1;
 
@@ -100,14 +135,16 @@ static void print_stack(struct process_stack_key   *key,
     uint64_t          ip[PERF_MAX_STACK_DEPTH] = {};
     int32_t           i                        = 0;
     struct bcc_symbol sym;
+    enum cc_stat      stat = CC_OK;
 
     debug("\n");
-    debug("<<comm: %s, count: %d>>", value->comm, value->count);
+    debug("<<pid:%d, comm:'%s', count:%d>>", key->pid, value->comm,
+          value->count);
 
     // 通过key得到内核堆栈id、用户堆栈id，以此从堆栈map中获取堆栈信息
     // 获取每层的内核堆栈
     debug("\t<<%20s id: %u>>", "kernel stack", key->kern_stackid);
-    if (bpf_map_lookup_elem(bpf_map_fd[1], &key->kern_stackid, ip) != 0) {
+    if (bpf_map_lookup_elem(__bpf_map_fd[1], &key->kern_stackid, ip) != 0) {
         // 没有内核堆栈
         debug("\t---");
     } else {
@@ -115,11 +152,11 @@ static void print_stack(struct process_stack_key   *key,
             if (ip[i] == 0) {
                 continue;
             }
-            debug("\t0x%16lx\t%20s", ip[i], bpf_get_ksym_name(ip[i]));
+            debug("\t0x%16lx\t%-20s", ip[i], bpf_get_ksym_name(ip[i]));
         }
     }
     debug("\t<<%20s id: %u>>", "user stack", key->user_stackid);
-    if (bpf_map_lookup_elem(bpf_map_fd[1], &key->user_stackid, ip) != 0) {
+    if (bpf_map_lookup_elem(__bpf_map_fd[1], &key->user_stackid, ip) != 0) {
         // 没有用户堆栈
         debug("\t%20s", "---");
     } else {
@@ -127,9 +164,23 @@ static void print_stack(struct process_stack_key   *key,
             if (ip[i] == 0) {
                 continue;
             }
-            memset(&sym, 0, sizeof(sym));
-            if (0 == bcc_symcache_resolve(bcc_symcache, ip[i], &sym)) {
-                debug("\t0x%016lx\t%20s", ip[i], sym.name);
+
+            // 根据pid查询bcc_symbol
+            void *bcc_symcache = NULL;
+            uint64_t hkey = key->pid;
+            stat = cc_hashtable_get(__bcc_symcache_tab, &hkey,
+                                    &bcc_symcache);
+            if (stat != CC_OK) {
+                debug("\t0x%016lx", ip[i]);
+            } else {
+                if (bcc_symcache) {
+                    memset(&sym, 0, sizeof(sym));
+                    if (0 == bcc_symcache_resolve(bcc_symcache, ip[i], &sym)) {
+                        debug("\t0x%016lx\t%-10s\t%-20s\t0x%-016lx", ip[i], sym.name, sym.module, sym.offset);
+                    }
+                } else {
+                    debug("\t0x%016lx", ip[i]);
+                }
             }
         }
     }
@@ -142,52 +193,73 @@ static void print_stacks()
 
     uint32_t stack_id = 0, next_stack_id;
 
-    while (bpf_map_get_next_key(bpf_map_fd[0], &key, &next_key) == 0) {
-        bpf_map_lookup_elem(bpf_map_fd[0], &next_key, &value);
+    while (bpf_map_get_next_key(__bpf_map_fd[0], &key, &next_key) == 0) {
+        bpf_map_lookup_elem(__bpf_map_fd[0], &next_key, &value);
         print_stack(&next_key, &value);
-        bpf_map_delete_elem(bpf_map_fd[0], &next_key);
+        bpf_map_delete_elem(__bpf_map_fd[0], &next_key);
         key = next_key;
     }
 
     debug("\n");
 
     // clear process stack map
-    while (bpf_map_get_next_key(bpf_map_fd[1], &stack_id, &next_stack_id) ==
+    while (bpf_map_get_next_key(__bpf_map_fd[1], &stack_id, &next_stack_id) ==
            0) {
-        bpf_map_delete_elem(bpf_map_fd[1], &next_key);
+        bpf_map_delete_elem(__bpf_map_fd[1], &next_key);
         stack_id = next_stack_id;
     }
 }
 
 int32_t main(int32_t argc, char **argv)
 {
-    int32_t                  ret, pmu_fd;
-    pid_t                    filter_pid = -1;
-    struct bpf_object       *obj;
-    struct bpf_program      *prog;
-    struct bpf_link        **perf_event_links;
-    const char              *bpf_kern_o;
-    struct ctrl_filter_value filter_value;
-    enum ctrl_filter_key     filter_key;
-
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s %s pid\n", argv[0], __default_kern_obj);
-        return -1;
-    }
+    int32_t ret, pmu_fd, option_index = 0, c, statistical_duration = 0,
+                         pid_count = 0, index = 0;
+    struct bpf_object  *obj;
+    struct bpf_program *prog;
+    struct bpf_link   **perf_event_links;
+    char                bpf_kern_o[EBPF_KERN_OBJ_BUF_SIZE];
+    char                filter_pids_buf[FILTERPIDS_BUF_SIZE];
 
     debugLevel = 9;
     debugFile  = fdopen(STDOUT_FILENO, "w");
 
-    bpf_kern_o = argv[1];
-    filter_pid = strtol(argv[2], NULL, 10);
-
-    if (filter_pid == 0 || errno == EINVAL || errno == ERANGE) {
-        debug("filter pid %s is invalid", argv[2]);
-        return -1;
+    while ((c = getopt_long(argc, argv, "k:p:d:h", long_options,
+                            &option_index)) != -1) {
+        switch (c) {
+        case 'k':
+            strncpy(bpf_kern_o, optarg, strlen(optarg));
+            break;
+        case 'p':
+            strncpy(filter_pids_buf, optarg, strlen(optarg));
+            if ((pid_count =
+                     str_split_to_nums(filter_pids_buf, ":", __filter_pids,
+                                       FILTERPIDS_MAX_COUNT)) < 0) {
+                fprintf(stderr, "invalid filter pids: %s\n", filter_pids_buf);
+                return -1;
+            } else {
+                for (int i = 0; i < pid_count; i++) {
+                    debug("filter pid: %d", __filter_pids[i]);
+                }
+            }
+            break;
+        case 'd':
+            statistical_duration = (int32_t)strtol(optarg, NULL, 10);
+            if (statistical_duration <= 10) {
+                statistical_duration = 10;
+            }
+            break;
+        case 'h':
+            debug(
+                "./perf_event_stack_cli --kern=xmbpf_perf_event_stack_kern.5.12.o --pids=1:2:3 --duration=10");
+            break;
+        default:
+            debug("unknown option: %c", c);
+            exit(EXIT_FAILURE);
+        }
     }
 
-    debug("Loading BPF object file: %s, filter pid: %d\n", bpf_kern_o,
-          filter_pid);
+    debug("Loading BPF object file: '%s', filter pids: '%s' pid count: %d",
+          bpf_kern_o, filter_pids_buf, pid_count);
 
     int nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
 
@@ -195,8 +267,6 @@ int32_t main(int32_t argc, char **argv)
         fprintf(stderr, "failed to process /proc/kallsyms\n");
         return -1;
     }
-
-    bcc_symcache = bcc_symcache_new(filter_pid, NULL);
 
     libbpf_set_print(bpf_printf);
 
@@ -223,42 +293,55 @@ int32_t main(int32_t argc, char **argv)
     }
 
     // 宽度
-    bpf_map_fd[0] = bpf_object__find_map_fd_by_name(obj, "process_stack_count");
-    if (bpf_map_fd[0] < 0) {
+    __bpf_map_fd[0] =
+        bpf_object__find_map_fd_by_name(obj, "process_stack_count");
+    if (__bpf_map_fd[0] < 0) {
         fprintf(
             stderr,
             "ERROR: finding a map 'process_stack_count' in obj file failed\n");
         goto cleanup;
     }
 
-    bpf_map_fd[1] = bpf_object__find_map_fd_by_name(obj, "process_stack_map");
-    if (bpf_map_fd[1] < 0) {
+    __bpf_map_fd[1] = bpf_object__find_map_fd_by_name(obj, "process_stack_map");
+    if (__bpf_map_fd[1] < 0) {
         fprintf(
             stderr,
             "ERROR: finding a map 'process_stack_map' in obj file failed\n");
         goto cleanup;
     }
 
-    bpf_map_fd[2] = bpf_object__find_map_fd_by_name(obj, "ctrl_filter_map");
-    if (bpf_map_fd[1] < 0) {
+    __bpf_map_fd[2] = bpf_object__find_map_fd_by_name(obj, "ctrl_filter_map");
+    if (__bpf_map_fd[1] < 0) {
         fprintf(stderr,
                 "ERROR: finding a map 'ctrl_filter_map' in obj file failed\n");
         goto cleanup;
     }
 
     // 设置过滤的pid
-    filter_key              = CTRL_FILTER;
-    filter_value.filter_pid = filter_pid;
-    strncpy(filter_value.filter_content, __default_kern_obj,
-            strlen(__default_kern_obj));
+    // filter_key              = CTRL_FILTER;
+    // filter_value.filter_pid = filter_pid;
+    // strncpy(filter_value.filter_content, __default_kern_obj,
+    //         strlen(__default_kern_obj));
 
-    ret =
-        bpf_map_update_elem(bpf_map_fd[2], &filter_key, &filter_value, BPF_ANY);
-    if (0 != ret) {
-        fprintf(stderr,
-                "ERROR: bpf_map_update_elem filter value failed, ret: %d\n",
-                ret);
-        goto cleanup;
+    // ret =
+    //     bpf_map_update_elem(__bpf_map_fd[2], &filter_key, &filter_value, BPF_ANY);
+    // if (0 != ret) {
+    //     fprintf(stderr,
+    //             "ERROR: bpf_map_update_elem filter value failed, ret: %d\n",
+    //             ret);
+    //     goto cleanup;
+    // }
+    cc_hashtable_conf_init(&__bcc_symcache_tab_conf);
+    __bcc_symcache_tab_conf.hash             = GENERAL_HASH;
+    __bcc_symcache_tab_conf.key_length       = sizeof(uint64_t);
+    __bcc_symcache_tab_conf.initial_capacity = pid_count;
+    __bcc_symcache_tab_conf.key_compare      = bcc_symcache_tab_key_compare;
+    cc_hashtable_new_conf(&__bcc_symcache_tab_conf, &__bcc_symcache_tab);
+
+    for (index = 0; index < pid_count; index++) {
+        void *symcache = bcc_symcache_new((int32_t)__filter_pids[index], NULL);
+        debug("add pid:%d symcache into hash", __filter_pids[index]);
+        cc_hashtable_add(__bcc_symcache_tab, &__filter_pids[index], symcache);
     }
 
     // 打开perf event
@@ -275,8 +358,8 @@ int32_t main(int32_t argc, char **argv)
         (struct bpf_link **)calloc(nr_cpus, sizeof(struct bpf_link *));
     debug("nr cpu count: %d", nr_cpus);
 
-    if ((pmu_fd = open_and_attach_perf_event(filter_pid, prog, nr_cpus,
-                                             perf_event_links)) < 0) {
+    if ((pmu_fd = open_and_attach_perf_event(prog, nr_cpus, perf_event_links)) <
+        0) {
         goto cleanup;
     } else {
         debug("open perf event with prog: '%s' successed",
@@ -288,8 +371,8 @@ int32_t main(int32_t argc, char **argv)
 
     while (!__sig_exit) {
         print_stacks();
-        sleep(3);
-        debug("----------------------------");
+        sleep(statistical_duration);
+        debug("--------------statistical_duration--------------");
     }
 
 cleanup:
@@ -304,9 +387,17 @@ cleanup:
 
     bpf_object__close(obj);
 
-    if (bcc_symcache) {
-        bcc_free_symcache(bcc_symcache, filter_pid);
-        bcc_symcache = NULL;
+    if (__bcc_symcache_tab) {
+        CC_HashTableIter iter;
+        cc_hashtable_iter_init(&iter, __bcc_symcache_tab);
+
+        TableEntry *entry;
+        while (cc_hashtable_iter_next(&iter, &entry) != CC_ITER_END) {
+            bcc_free_symcache(entry->value, *(int32_t *)entry->key);
+        }
+
+        cc_hashtable_destroy(__bcc_symcache_tab);
+        __bcc_symcache_tab = NULL;
     }
 
     debug("%s exit", argv[0]);

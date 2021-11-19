@@ -24,5 +24,5 @@ add_custom_target(gen_perf_event_stack_skel
 				VERBATIM
 				)
 
-target_link_libraries(perf_event_stack_cli xmonitor-utils libbcc.a libbpf.a elf pthread z m) 
+target_link_libraries(perf_event_stack_cli xmonitor-utils libbcc.a libbpf.a elf libcollectc.a pthread z m) 
 add_dependencies(perf_event_stack_cli gen_perf_event_stack_skel)  
