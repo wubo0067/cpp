@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-12 10:13:05 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-19 14:45:04
+ * @Last Modified time: 2021-11-19 16:24:43
  */
 #include <linux/perf_event.h>
 
@@ -166,17 +166,17 @@ static void print_stack(struct process_stack_key   *key,
             }
 
             // 根据pid查询bcc_symbol
-            void *bcc_symcache = NULL;
-            uint64_t hkey = key->pid;
-            stat = cc_hashtable_get(__bcc_symcache_tab, &hkey,
-                                    &bcc_symcache);
+            void    *bcc_symcache = NULL;
+            uint64_t hkey         = key->pid;
+            stat = cc_hashtable_get(__bcc_symcache_tab, &hkey, &bcc_symcache);
             if (stat != CC_OK) {
                 debug("\t0x%016lx", ip[i]);
             } else {
                 if (bcc_symcache) {
                     memset(&sym, 0, sizeof(sym));
                     if (0 == bcc_symcache_resolve(bcc_symcache, ip[i], &sym)) {
-                        debug("\t0x%016lx\t%-10s\t%-20s\t0x%-016lx", ip[i], sym.name, sym.module, sym.offset);
+                        debug("\t0x%016lx\t%-10s\t%-20s\t0x%-016lx", ip[i],
+                              sym.name, sym.module, sym.offset);
                     }
                 } else {
                     debug("\t0x%016lx", ip[i]);
