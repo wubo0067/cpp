@@ -47,7 +47,7 @@ struct {
 // 记录堆栈
 struct {
     __uint(type, BPF_MAP_TYPE_STACK_TRACE);
-    __uint(key_size, sizeof(__u32)); // key 是stackid
+    __uint(key_size, sizeof(__u32));                          // key 是stackid
     __uint(value_size, PERF_MAX_STACK_DEPTH * sizeof(__u64)); // 堆栈的每一层
     __uint(max_entries, roundup_pow_of_two(10240));
 } process_stack_map SEC(".maps");
@@ -61,20 +61,23 @@ struct {
 
 #else
 
-struct bpf_map_def SEC("maps") process_stack_count {
-    .type = BPF_MAP_TYPE_HASH, .key_size = sizeof(struct process_stack_key),
+struct bpf_map_def SEC("maps") process_stack_count = {
+    .type        = BPF_MAP_TYPE_HASH,
+    .key_size    = sizeof(struct process_stack_key),
     .value_size  = sizeof(struct process_stack_value),
     .max_entries = roundup_pow_of_two(10240),
 };
 
-struct bpf_map_def SEC("maps") process_stack_map {
-    .type = BPF_MAP_TYPE_STACK_TRACE, .key_size = sizeof(__u32),
+struct bpf_map_def SEC("maps") process_stack_map = {
+    .type        = BPF_MAP_TYPE_STACK_TRACE,
+    .key_size    = sizeof(__u32),
     .value_size  = PERF_MAX_STACK_DEPTH * sizeof(__u64),
     .max_entries = roundup_pow_of_two(10240),
 };
 
-struct bpf_map_def SCE("maps") ctrl_filter_map {
-    .type = BPF_MAP_TYPE_ARRAY, .key_size = sizeof(__u32),
+struct bpf_map_def SCE("maps") ctrl_filter_map = {
+    .type        = BPF_MAP_TYPE_ARRAY,
+    .key_size    = sizeof(__u32),
     .value_size  = sizeof(struct ctrl_filter_value),
     .max_entries = CTRL_FILTER_END,
 };
@@ -102,7 +105,7 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 
     //printk("xmonitor pid: %d\n", pid);
 
-    bpf_get_current_comm(init_value.comm, sizeof(init_value.comm));
+    bpf_get_current_comm(&init_value.comm, sizeof(init_value.comm));
 
     // 获取过滤的pid
     // __u32                     filter_key = CTRL_FILTER;
@@ -138,16 +141,17 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     kern_stackid = bpf_get_stackid(ctx, &process_stack_map, KERN_STACKID_FLAGS);
     user_stackid = bpf_get_stackid(ctx, &process_stack_map, USER_STACKID_FLAGS);
 
-    if (kern_stackid < 0 && user_stackid < 0) {
+    if ((__s32)kern_stackid < 0 && (__s32)user_stackid < 0) {
         printk("xmonitor CPU-%d period %lld ip %llx", cpuid, ctx->sample_period,
                PT_REGS_IP(&ctx->regs));
         return 0;
     }
-
+#if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 15, 0))
     if (ctx->addr != 0) {
         printk("xmonitor comm: '%s' pid: %d Address recorded on event: %llx",
                init_value.comm, pid, ctx->addr);
     }
+#endif
 
     ret = bpf_perf_prog_read_value(ctx, (void *)&perf_value_buf,
                                    sizeof(struct bpf_perf_event_value));
@@ -161,8 +165,8 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     key.kern_stackid = kern_stackid;
     key.user_stackid = user_stackid;
 
-    printk("xmonitor pid: %u kern_stackid: %u, user_stackid: %u", pid, kern_stackid,
-           user_stackid);
+    printk("xmonitor pid: %u kern_stackid: %u, user_stackid: %u", pid,
+           kern_stackid, user_stackid);
 
     value = bpf_map_lookup_elem(&process_stack_count, &key);
     if (value) {
@@ -184,5 +188,5 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 // PROCESS_EXIT_BPF_PROG(xmonitor_bpf_stack_sched_process_exit,
 //                       process_stack_count)
 
-char           _license[] SEC("license") = "GPL";
+char _license[] SEC("license") = "GPL";
 //__u32 _version SEC("version")            = LINUX_VERSION_CODE;

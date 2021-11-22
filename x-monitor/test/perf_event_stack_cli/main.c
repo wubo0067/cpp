@@ -358,8 +358,7 @@ int32_t main(int32_t argc, char **argv)
         (struct bpf_link **)calloc(nr_cpus, sizeof(struct bpf_link *));
     debug("nr cpu count: %d", nr_cpus);
 
-    if ((pmu_fd = open_and_attach_perf_event(prog, nr_cpus, perf_event_links)) <
-        0) {
+    if (open_and_attach_perf_event(prog, nr_cpus, perf_event_links) < 0) {
         goto cleanup;
     } else {
         debug("open perf event with prog: '%s' successed",
