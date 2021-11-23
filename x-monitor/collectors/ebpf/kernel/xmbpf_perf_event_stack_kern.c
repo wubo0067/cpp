@@ -142,13 +142,13 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     user_stackid = bpf_get_stackid(ctx, &process_stack_map, USER_STACKID_FLAGS);
 
     if ((__s32)kern_stackid < 0 && (__s32)user_stackid < 0) {
-        printk("xmonitor CPU-%d period %lld ip %llx", cpuid, ctx->sample_period,
+        printk("xmonitor CPU-%d period %lld ip %llx\n", cpuid, ctx->sample_period,
                PT_REGS_IP(&ctx->regs));
         return 0;
     }
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(4, 15, 0))
     if (ctx->addr != 0) {
-        printk("xmonitor comm: '%s' pid: %d Address recorded on event: %llx",
+        printk("xmonitor comm: '%s' pid: %d Address recorded on event: %llx\n",
                init_value.comm, pid, ctx->addr);
     }
 #endif
@@ -156,16 +156,16 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
     ret = bpf_perf_prog_read_value(ctx, (void *)&perf_value_buf,
                                    sizeof(struct bpf_perf_event_value));
     if (!ret)
-        printk("xmonitor comm: '%s' Time Enabled: %llu, Time Running: %llu",
+        printk("xmonitor comm: '%s' Time Enabled: %llu, Time Running: %llu\n",
                init_value.comm, perf_value_buf.enabled, perf_value_buf.running);
     else
-        printk("xmonitor Get Time Failed, ErrCode: %d", ret);
+        printk("xmonitor Get Time Failed, ErrCode: %d\n", ret);
 
     key.pid          = pid;
     key.kern_stackid = kern_stackid;
     key.user_stackid = user_stackid;
 
-    printk("xmonitor pid: %u kern_stackid: %u, user_stackid: %u", pid,
+    printk("xmonitor pid: %u kern_stackid: %u, user_stackid: %u\n", pid,
            kern_stackid, user_stackid);
 
     value = bpf_map_lookup_elem(&process_stack_count, &key);
@@ -173,12 +173,12 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
         // 只有一个prog更新，不用同步
         value->count++;
         //bpf_get_current_comm(&value->comm, sizeof(value->comm));
-        printk("xmonitor pid: %u stack count: %u", pid, value->count);
+        printk("xmonitor pid: %u stack count: %u\n", pid, value->count);
     } else {
         init_value.count = 1;
         bpf_map_update_elem(&process_stack_count, &key, &init_value,
                             BPF_NOEXIST);
-        printk("xmonitor pid: %u stack count first add");
+        printk("xmonitor pid: %u stack count first add\n", pid);
     }
 
     return 0;
@@ -189,4 +189,4 @@ __s32 xmonitor_bpf_collect_stack_traces(struct bpf_perf_event_data *ctx)
 //                       process_stack_count)
 
 char _license[] SEC("license") = "GPL";
-//__u32 _version SEC("version")            = LINUX_VERSION_CODE;
+__u32 _version SEC("version")            = LINUX_VERSION_CODE;
