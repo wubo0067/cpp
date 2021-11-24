@@ -52,18 +52,29 @@ struct process_stack_value {
     uint32_t count;
 };
 
+enum output_type {
+    OUTPUT_STDOUT_ALL,
+    OUTPUT_STDOUT_FILTER,
+    OUTPUT_FILE_ALL,
+    OUTPUT_FILE_FILTER,
+    OUTPUT_TYPE_END,
+};
+
 static const char *const __default_kern_obj = "perf_event_stack_kern.o";
 static sig_atomic_t      __sig_exit         = 0;
 static int32_t           __bpf_map_fd[3];
 static uint64_t          __filter_pids[FILTERPIDS_MAX_COUNT];
 static CC_HashTableConf  __bcc_symcache_tab_conf;
-static CC_HashTable     *__bcc_symcache_tab = NULL;
+static CC_HashTable     *__bcc_symcache_tab    = NULL;
+static const char       *__default_output_file = "perf_event_stack_cli.out";
+static enum output_type  __output_type         = OUTPUT_STDOUT_ALL;
 
 //getopt_long 返回 int ，而不是 char 。如果 flag(第三个)字段是 NULL(或等效的 0)，那么 val(第四个)字段将被返回
 static struct option long_options[] = {
     { "kern", required_argument, NULL, 'k' },
     { "pids", required_argument, NULL, 'p' },
     { "duration", required_argument, NULL, 'd' },
+    { "output", required_argument, NULL, 'o' },
     { "help", no_argument, NULL, 'h' },
     { 0, 0, 0, 0 }
 };
@@ -132,10 +143,20 @@ static int32_t open_and_attach_perf_event(struct bpf_program *prog,
 static void print_stack(struct process_stack_key   *key,
                         struct process_stack_value *value)
 {
-    uint64_t          ip[PERF_MAX_STACK_DEPTH] = {};
+    uint64_t          ip[PERF_MAX_STACK_DEPTH] = {}, hkey;
     int32_t           i                        = 0;
     struct bcc_symbol sym;
     enum cc_stat      stat = CC_OK;
+
+    hkey = key->pid;
+
+    if (__output_type == OUTPUT_STDOUT_FILTER ||
+        __output_type == OUTPUT_FILE_FILTER) {
+        if (!cc_hashtable_contains_key(__bcc_symcache_tab, &hkey)) {
+            //debug("pid: %d not in filter pids", key->pid);
+            return;
+        }
+    }
 
     debug("\n");
     debug("<<pid:%d, comm:'%s', count:%d>>", key->pid, value->comm,
@@ -166,8 +187,7 @@ static void print_stack(struct process_stack_key   *key,
             }
 
             // 根据pid查询bcc_symbol
-            void    *bcc_symcache = NULL;
-            uint64_t hkey         = key->pid;
+            void *bcc_symcache = NULL;
             stat = cc_hashtable_get(__bcc_symcache_tab, &hkey, &bcc_symcache);
             if (stat != CC_OK) {
                 debug("\t0x%016lx", ip[i]);
@@ -223,7 +243,7 @@ int32_t main(int32_t argc, char **argv)
     debugLevel = 9;
     debugFile  = fdopen(STDOUT_FILENO, "w");
 
-    while ((c = getopt_long(argc, argv, "k:p:d:h", long_options,
+    while ((c = getopt_long(argc, argv, "k:p:d:o:h", long_options,
                             &option_index)) != -1) {
         switch (c) {
         case 'k':
@@ -248,9 +268,21 @@ int32_t main(int32_t argc, char **argv)
                 statistical_duration = 10;
             }
             break;
+        case 'o':
+            __output_type = (enum output_type)atoi(optarg);
+            if (__output_type < 0 || __output_type >= OUTPUT_TYPE_END) {
+                fprintf(stderr,
+                        "invalid output type: %d, must be set 0,1,2,3\n",
+                        __output_type);
+                return -1;
+            }
+            if (__output_type == OUTPUT_FILE_ALL ||
+                __output_type == OUTPUT_FILE_FILTER) {
+                debugFile = fopen(__default_output_file, "w");
+            }
         case 'h':
             debug(
-                "./perf_event_stack_cli --kern=xmbpf_perf_event_stack_kern.5.12.o --pids=1:2:3 --duration=10");
+                "./perf_event_stack_cli --kern=xmbpf_perf_event_stack_kern.5.12.o --pids=pid:pid:pid --duration=10 --output=0");
             break;
         default:
             debug("unknown option: %c", c);
