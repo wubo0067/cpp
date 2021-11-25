@@ -179,7 +179,7 @@ static void print_stack(struct process_stack_key   *key,
     debug("\t<<%20s id: %u>>", "user stack", key->user_stackid);
     if (bpf_map_lookup_elem(__bpf_map_fd[1], &key->user_stackid, ip) != 0) {
         // 没有用户堆栈
-        debug("\t%20s", "---");
+        debug("\t", "---");
     } else {
         for (i = PERF_MAX_STACK_DEPTH - 1; i >= 0; i--) {
             if (ip[i] == 0) {

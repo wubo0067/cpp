@@ -7,6 +7,18 @@ set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 # 编译输出目录
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
+set(STATIC_LINKING OFF CACHE BOOL "Build ipftrace2 as a statically linked executable")
+set(STATIC_LIBC OFF CACHE BOOL "Attempt to embed libc, only known to work with musl. Has issues with dlopen.")
+
+if(STATIC_LINKING)
+  if(STATIC_LIBC)
+    set(CMAKE_EXE_LINKER_FLAGS "-static")
+  endif(STATIC_LIBC)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  set(CMAKE_LINK_SEARCH_START_STATIC TRUE)
+  set(CMAKE_LINK_SEARCH_END_STATIC TRUE)
+endif(STATIC_LINKING)
+
 # debug 、 release版本
 set(CMAKE_C_FLAGS_DEBUG "-O0 -Wall -g -ggdb3")
 set(CMAKE_C_FLAGS_RELEASE "-O3 -Wall")
@@ -16,6 +28,8 @@ set(CMAKE_C_FLAGS "-fPIC -Wno-unknown-pragmas -Wextra")
 
 # 设置c标准 cmake3.18只支持c11
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
 
 # 版本号.
 set (XMonitor_VERSION_MAJOR 1)
