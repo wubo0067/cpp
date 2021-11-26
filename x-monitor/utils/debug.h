@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-12 16:41:34 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-12 16:43:50
+ * @Last Modified time: 2021-11-25 11:19:25
  */
 
 #pragma once
@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 #include <stdio.h>
+#include <time.h>
 
 /** Initialize the variable <tt>debugLevel</tt> depending on the value
  *  of <tt>argv[1]</tt>. Normally called from <tt>main</tt> with the program
@@ -78,10 +79,17 @@ extern FILE *debugFile;
  */
 #define lDebug(level, fmt, ...)                                                \
     do {                                                                       \
-        if (DEBUG_ENABLED && (debugLevel >= level))                            \
+        if (DEBUG_ENABLED && (debugLevel >= level)) {                          \
+            char       ts[32];                                                 \
+            time_t     t;                                                      \
+            struct tm *tm;                                                     \
+            time(&t);                                                          \
+            tm = localtime(&t);                                                \
+            strftime(ts, sizeof(ts), "%m-%d %H:%M:%S", tm);                    \
             fprintf((debugFile ? debugFile : stderr),                          \
-                    "DEBUG %s[%d] %s() " fmt "\n", __FILE__, __LINE__,         \
+                    "%s %s[%d] %s() " fmt "\n", ts, __FILE__, __LINE__,        \
                     __func__, ##__VA_ARGS__);                                  \
+        }                                                                      \
     } while (0)
 
 #ifdef __cplusplus

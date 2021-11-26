@@ -60,7 +60,7 @@ include_directories("${PROJECT_SOURCE_DIR}"
 link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
 
 # 第三方库
-set(EXTRA_LIBS "libjson-c.a" "libconfig.a" "libzlog.a" "libcollectc.a")
+set(EXTRA_LIBS "libjson-c.a" "libconfig.a" "libzlog.a" "libcollectc.a" "libbcc.a" "libpcre2-8.a" "libpcre2-posix.a")
 
 # 自定义宏
 # add_definitions(
