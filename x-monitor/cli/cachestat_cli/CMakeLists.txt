@@ -12,7 +12,7 @@ link_directories("${KERNEL_DIR}/tools/lib/bpf")
 add_executable(cachestat_cli ${cachestat_cli_srcs} ${EBPF_HELPER_OBJS})
 
 add_custom_target(gen_cachestat_skel 
-				COMMAND /usr/sbin/bpftool gen skeleton ${PROJECT_SOURCE_DIR}/collectors/ebpf/kernel/xmbpf_cachestat_kern.o > ${PROJECT_SOURCE_DIR}/test/cachestat_cli/xmbpf_cachestat_skel.h
+				COMMAND /usr/sbin/bpftool gen skeleton ${PROJECT_SOURCE_DIR}/collectors/ebpf/kernel/xmbpf_cachestat_kern.o > ${PROJECT_SOURCE_DIR}/cli/cachestat_cli/xmbpf_cachestat_skel.h
 				VERBATIM
 				)
 

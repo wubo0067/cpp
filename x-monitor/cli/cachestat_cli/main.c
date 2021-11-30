@@ -2,14 +2,14 @@
  * @Author: CALM.WU 
  * @Date: 2021-11-03 11:23:12 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-25 10:57:35
+ * @Last Modified time: 2021-11-30 15:17:00
  */
 
 #include "utils/common.h"
 #include "utils/x_ebpf.h"
 #include "utils/resource.h"
 
-#include "cachestat_skel.h"
+#include "xmbpf_cachestat_skel.h"
 
 const char *const cachestat_kern_obj =
     "../collectors/ebpf/kernel/xmbpf_cachestat_kern.5.12.o";

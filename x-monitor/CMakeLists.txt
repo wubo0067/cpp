@@ -70,9 +70,9 @@ set(EXTRA_LIBS "libjson-c.a" "libconfig.a" "libzlog.a" "libcollectc.a" "libbcc.a
 
 # 项目子目录
 add_subdirectory(utils)
-add_subdirectory(test/construct_init)
-add_subdirectory(test/cachestat_cli)
-add_subdirectory(test/perf_event_stack_cli)
+add_subdirectory(cli/construct_init)
+add_subdirectory(cli/cachestat_cli)
+add_subdirectory(cli/perf_event_stack_cli)
 
 # 子目录源代码
 set(PLUGINSD_FILES

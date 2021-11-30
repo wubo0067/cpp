@@ -238,6 +238,7 @@ int32_t main(int32_t argc, char *argv[])
         }
 
         if (routine->enabled && NULL != routine->init_routine) {
+            // 初始化
             ret = routine->init_routine();
             if (0 == ret) {
                 info("init xmonitor-static-routine '%s' successed",

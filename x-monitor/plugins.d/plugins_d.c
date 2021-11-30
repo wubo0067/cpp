@@ -2,12 +2,11 @@
  * @Author: CALM.WU
  * @Date: 2021-10-15 14:41:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-10-28 16:48:58
+ * @Last Modified time: 2021-11-30 16:58:05
  */
 
 #include "plugins_d.h"
 #include "routine.h"
-#include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
@@ -19,6 +18,8 @@
 
 #define PLUGINSD_FILE_SUFFIX ".plugin"
 #define PLUGINSD_FILE_SUFFIX_LEN strlen(PLUGINSD_FILE_SUFFIX)
+
+static const char * __name = "PLUGINSD";
 
 struct external_plugin {
     char config_name[CONFIG_NAME_MAX + 1];
@@ -59,7 +60,7 @@ __attribute__((constructor)) static void pluginsd_register_routine()
     struct xmonitor_static_routine *pr =
         (struct xmonitor_static_routine *)calloc(
             1, sizeof(struct xmonitor_static_routine));
-    pr->name          = "PLUGINSD";
+    pr->name          = __name;
     pr->config_name   = NULL;
     pr->enabled       = 1;
     pr->thread_id     = &__pluginsd.thread_id;
