@@ -9,4 +9,6 @@
 
 #include "common.h"
 
+typedef uint64_t usec_t;
+
 extern time_t now_realtime_sec(void);

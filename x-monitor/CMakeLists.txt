@@ -85,10 +85,18 @@ set(APPCONFIG_FILES
         appconfig/appconfig.c
         )
 
+set(PROC_PLUGIN_FILES
+        collectors/proc/proc.h
+        collectors/proc/proc.c
+        collectors/proc/proc_disk.h
+        collectors/proc/proc_disk.c
+        )        
+
 # 编译的执行程序
 add_executable(x-monitor main.c
                         ${PLUGINSD_FILES}
                         ${APPCONFIG_FILES}
+                        ${PROC_PLUGIN_FILES}
                         )
 target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")                        
                         

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-15 14:41:36
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-30 16:58:05
+ * @Last Modified time: 2021-11-30 17:07:42
  */
 
 #include "plugins_d.h"
@@ -33,7 +33,7 @@ struct external_plugin {
 
     volatile sig_atomic_t is_working;
     time_t                start_time;
-    pthread_t             thread_id;
+    pthread_t             thread_id; // routine执行的线程id
     volatile pid_t        child_pid; //
 
     struct external_plugin *next;
@@ -57,20 +57,20 @@ static struct pluginsd __pluginsd = {
 __attribute__((constructor)) static void pluginsd_register_routine()
 {
     fprintf(stderr, "---register_pluginsd_routine---\n");
-    struct xmonitor_static_routine *pr =
+    struct xmonitor_static_routine *xsr =
         (struct xmonitor_static_routine *)calloc(
             1, sizeof(struct xmonitor_static_routine));
-    pr->name          = __name;
-    pr->config_name   = NULL;
-    pr->enabled       = 1;
-    pr->thread_id     = &__pluginsd.thread_id;
-    pr->init_routine  = pluginsd_routine_init;
-    pr->start_routine = pluginsd_routine_start;
-    pr->stop_routine  = pluginsd_routine_stop;
-    register_xmonitor_static_routine(pr);
+    xsr->name          = __name;
+    xsr->config_name   = NULL;
+    xsr->enabled       = 1;
+    xsr->thread_id     = &__pluginsd.thread_id;
+    xsr->init_routine  = pluginsd_routine_init;
+    xsr->start_routine = pluginsd_routine_start;
+    xsr->stop_routine  = pluginsd_routine_stop;
+    register_xmonitor_static_routine(xsr);
 }
 
-static void external_plugin_thread_cleanup(void *arg)
+static void __external_plugin_thread_cleanup(void *arg)
 {
     struct external_plugin *ep = (struct external_plugin *)arg;
 
@@ -87,7 +87,7 @@ static void external_plugin_thread_cleanup(void *arg)
         ep->child_pid = 0;
     }
     ep->is_working = 0;
-    debug("external plugin '%s' worker thread has been cleaned up",
+    debug("external plugin '%s' worker thread has been cleaned up...",
           ep->config_name);
 }
 
@@ -108,7 +108,7 @@ static void *external_plugin_thread_worker(void *arg)
         error("cannot set pthread cancel state to ENABLE.");
 
     // 保证pthread_cancel会执行external_plugin_thread_cleanup，杀掉子进程
-    pthread_cleanup_push(external_plugin_thread_cleanup, arg);
+    pthread_cleanup_push(__external_plugin_thread_cleanup, arg);
 
     while (!ep->exit_flag) {
         // 执行扩展插件
@@ -164,7 +164,6 @@ static void *external_plugin_thread_worker(void *arg)
 
 int32_t pluginsd_routine_init()
 {
-    debug("pluginsd routine init");
     // 插件目录
     const char *plugins_dir =
         appconfig_get_str("application.plugins_directory", DEFAULT_PLUGINS_DIR);
@@ -183,6 +182,8 @@ int32_t pluginsd_routine_init()
     }
     debug("pluginsd.check_for_new_plugins_every: %d",
           __pluginsd.scan_frequency);
+
+    debug("[%s] routine init successed", __name);          
 
     return 0;
 }
@@ -344,7 +345,7 @@ void pluginsd_routine_stop()
         pthread_cancel(p->thread_id);
         // 等待external_plugin的工作线程结束
         pthread_join(p->thread_id, NULL);
-        info("external plugin '%s' worker thread exit!", p->config_name);
+        info("[%s] external plugin '%s' worker thread exit!", __name, p->config_name);
     }
-    debug("routine 'Pluginsd' has completely stopped");
+    debug("[%s] has completely stopped", __name);
 }

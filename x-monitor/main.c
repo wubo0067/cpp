@@ -234,7 +234,7 @@ int32_t main(int32_t argc, char *argv[])
     for (; routine; routine = routine->next) {
         // 判断是否enable
         if (routine->config_name) {
-            routine->enabled = appconfig_get_bool(routine->config_name, 0);
+            routine->enabled = appconfig_get_member_bool(routine->config_name, "enable", 0);
         }
 
         if (routine->enabled && NULL != routine->init_routine) {
