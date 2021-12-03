@@ -25,7 +25,7 @@ extern zlog_category_t *g_log_cat;
 #define info(args...) zlog_info(g_log_cat, ##args)
 #define warn(args...) zlog_warn(g_log_cat, ##args)
 #define error(args...) zlog_error(g_log_cat, ##args)
-#define fatal(args...) zlog_fatalf(g_log_cat, ##args)
+#define fatal(args...) zlog_fatal(g_log_cat, ##args)
 
 extern int32_t log_init(const char *log_config_file, const char * log_category_name);
 extern void    log_fini();

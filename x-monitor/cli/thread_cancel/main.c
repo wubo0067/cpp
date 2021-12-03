@@ -10,11 +10,30 @@
 #include <unistd.h>
 void *mythread(void *arg)
 {
+    // 设置本线程对信号的反应
+    /*
+    PTHREAD_CANCEL_ENABLE 默认，收到cancel信号马上设置退出状态。
+    PTHREAD_CANCEL_DISABLE 收到cancel信号继续运行。
+    */
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    /*
+    类型有两种，只有在PTHREAD_CANCEL_ENABLE状态下有效
+    PTHREAD_CANCEL_ASYNCHRONOUS 立即执行取消信号
+    PTHREAD_CANCEL_DEFERRED 运行到下一个取消点
+    */
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
 
+    /*
+    void pthread_testcancel(void);
+    当线程取消功能处于启用状态且取消状态设置为延迟状态时，pthread_testcancel()函数有效。如果在取消功能处处于禁用状态下调用pthread_testcancel()，则该函数不起作用。
+    请务必仅在线程取消线程操作安全的序列中插入pthread_testcancel()。除通过pthread_testcancel()调用以编程方式建立的取消点意外，pthread标准还指定了几个取消点
+    */
+
     while (1) {
+        // printf系统调用可引起阻塞，是系统默认的取消点
         printf("thread is running\n");
+        // 设置取消点
+        // pthread_testcancel();
     }
     printf("thread is not running\n");
     sleep(2);

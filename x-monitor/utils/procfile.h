@@ -17,18 +17,17 @@ struct pf_words {
 };
 
 struct pf_line {
-    size_t words; // how many words this line has
-    size_t first; // the id of the first word of this line
-                  // in the words array
+    size_t words; // 一行word的数量
+    size_t first; // 一行开始word在words中的下标
 };
 
 struct pf_lines {
-    size_t         len;     // used entries
-    size_t         size;    // capacity
+    size_t         len;     // used entries 行数
+    size_t         size;    // capacity 行数最大容量
     struct pf_line lines[]; // array of lines
 };
 
-enum procfile_separator {
+enum procfile_separator_type {
     PF_CHAR_IS_SEPARATOR, // NUL '\0' (null character)
     PF_CHAR_IS_NEWLINE,   // SOH (start of heading)
     PF_CHAR_IS_WORD,      // STX (start of text)
@@ -47,7 +46,7 @@ struct proc_file {
     struct pf_lines *lines;
     struct pf_words *words;
 
-    enum procfile_separator separators[256];
+    enum procfile_separator_type separators[256];
 
     char data[]; // allocated buffer to keep file contents
 };
@@ -64,3 +63,10 @@ extern struct proc_file *procfile_open(const char *filename,
 
 //
 extern char *procfile_filename(struct proc_file *ff);
+
+//
+extern void procfile_set_quotes(struct proc_file *ff, const char *quotes);
+
+// 
+extern void procfile_set_open_close(struct proc_file *ff, const char *open,
+                                    const char *close);

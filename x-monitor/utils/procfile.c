@@ -14,6 +14,10 @@
 #define PFLINES_INCREASE_STEP 10
 #define PFWORDS_INCREASE_STEP 200
 
+static pthread_once_t __procfile_init_defseps_once = PTHREAD_ONCE_INIT;
+
+static enum procfile_separator_type __def_seps_type[256];
+
 //-------------------------------------------------------------------------------------------------
 // file name
 char *procfile_filename(struct proc_file *ff)
@@ -36,33 +40,58 @@ char *procfile_filename(struct proc_file *ff)
 
 //-------------------------------------------------------------------------------------------------
 // lines
-static inline struct pf_lines *new_pflines()
+static inline struct pf_lines *__new_pflines()
 {
+    // 默认的行
     size_t size = PFLINES_INCREASE_STEP * sizeof(struct pf_line);
 
-    struct pf_lines *pfl =
+    struct pf_lines *pfls =
         (struct pf_lines *)malloc(sizeof(struct pf_lines) + size);
-    pfl->len  = 0;
-    pfl->size = size;
-    return pfl;
+    pfls->len  = 0;
+    pfls->size = size;
+    return pfls;
 }
 
-static inline void reset_pfilines(struct pf_lines *pfl)
+static inline void __reset_pfilines(struct pf_lines *pfls)
 {
-    pfl->len = 0;
+    pfls->len = 0;
 }
 
-static inline void free_pflines(struct pf_lines *pfl)
+static inline void __free_pflines(struct pf_lines *pfls)
 {
-    free(pfl);
-    pfl = NULL;
+    free(pfls);
+    pfls = NULL;
+}
+
+static inline size_t *__add_pfline(struct proc_file *ff)
+{
+    struct pf_lines *pfls = ff->lines;
+
+    // 如果容量不够，则扩容
+    if (unlikely(pfls->len == pfls->size)) {
+        size_t size =
+            pfls->size + PFLINES_INCREASE_STEP * sizeof(struct pf_line);
+        pfls = (struct pf_lines *)realloc(pfls, sizeof(struct pf_lines) + size);
+        // 扩展行的数量
+        pfls->size += PFLINES_INCREASE_STEP;
+    }
+
+    debug("adding line %lu at word %lu", pfls->len,
+          pfls->lines[pfls->len].first);
+    // 使用一个新行
+    struct pf_line *pfl = &pfls->lines[pfls->len++];
+    pfl->words          = 0;
+    pfl->first          = ff->words->len;
+
+    return &pfl->words;
 }
 
 //-------------------------------------------------------------------------------------------------
 // words
 
-static inline struct pf_words *new_pfwords()
+static inline struct pf_words *__new_pfwords()
 {
+    // 整个内容的word数组
     size_t size = PFWORDS_INCREASE_STEP * sizeof(char *);
 
     struct pf_words *pfw =
@@ -72,33 +101,172 @@ static inline struct pf_words *new_pfwords()
     return pfw;
 }
 
-static inline void reset_pfwords(struct pf_words *pfw)
+static inline void __reset_pfwords(struct pf_words *pfw)
 {
     pfw->len = 0;
 }
 
-static inline void free_pfwords(struct pf_words *pfw)
+static inline void __free_pfwords(struct pf_words *pfw)
 {
     free(pfw);
     pfw = NULL;
 }
 
+static void __add_pfword(struct proc_file *ff, char *word)
+{
+    struct pf_words *pfws = ff->words;
+    if (unlikely(pfws->len == pfws->size)) {
+        size_t size = pfws->size + PFWORDS_INCREASE_STEP * sizeof(char *);
+        ff->words =
+            (struct pf_words *)realloc(pfws, sizeof(struct pf_words) + size);
+        pfws->size += PFWORDS_INCREASE_STEP;
+    }
+
+    pfws->words[pfws->len++] = word;
+}
+
 //-------------------------------------------------------------------------------------------------
 // file
 
-static void procfile_parser(struct proc_file *ff)
+static void __procfile_parser(struct proc_file *ff)
 {
-    char *s = ff->data;
-    char *e = &ff->data[ff->len];
-    char *t = ff->data;
+    char *s = ff->data;           // 内容起始地址
+    char *e = &ff->data[ff->len]; // 内容结束地址
+    char *t = ff->data;           // 当前word的首字符地址
 
-    while(s < e) {
+    enum procfile_separator_type *seps = ff->separators;
 
+    char   quote  = 0; // the quote character - only when in quoted string
+    size_t opened = 0; // counts the number of open parenthesis
+
+    // 添加第一行，返回行的word地址
+    size_t *line_words = __add_pfline(ff);
+
+    while (s < e) {
+        // 判断字符类型
+        enum procfile_separator_type ct = seps[(unsigned char)(*s)];
+
+        if (likely(ct == PF_CHAR_IS_WORD)) {
+            s++;
+        } else if (likely(ct == PF_CHAR_IS_SEPARATOR)) {
+            if (!quote && !opened) {
+                if (s != t) {
+                    // 这是个分隔符，找到一个word在分隔符前
+                    *s = '\0';
+                    __add_pfword(ff, t);
+                    // 行的word数量+1
+                    (*line_words)++;
+                    t = ++s;
+
+                } else {
+                    // 第一个字符是分隔符，跳过
+                    t = ++s;
+                }
+            } else {
+                s++;
+            }
+        } else if (likely(ct == PF_CHAR_IS_NEWLINE)) {
+            // 会不会有/r/n这种windows换行方式，linux是\n
+            // 换行符
+            *s = '\0';
+            __add_pfword(ff, t);
+            (*line_words)++;
+            t = ++s;
+            // 新开一行，行的word数量为0
+            line_words = __add_pfline(ff);
+        } else if (likely(ct == PF_CHAR_IS_QUOTE)) {
+            // 引号
+            if (unlikely(!quote && s == t)) {
+                // quote opened at the beginning
+                quote = *s;
+                // 跳过
+                t = ++s;
+            } else if (unlikely(quote && quote == *s)) {
+                // quote closed
+                quote = 0;
+
+                *s = '\0';
+                // 整体是个word
+                __add_pfword(ff, t);
+                (*line_words)++;
+                // 跳过这个word
+                t = ++s;
+            } else {
+                s++;
+            }
+        } else if (likely(ct == PF_CHAR_IS_OPEN)) {
+            if (s == t) {
+                opened++;
+                t = ++s;
+            } else if (opened) {
+                opened++;
+                s++;
+            } else
+                s++;
+        } else if (likely(ct == PF_CHAR_IS_CLOSE)) {
+            if (opened) {
+                opened--;
+
+                if (!opened) {
+                    *s = '\0';
+                    __add_pfword(ff, t);
+                    (*line_words)++;
+                    t = ++s;
+                } else
+                    s++;
+            } else
+                s++;
+        } else {
+            fatal("Internal Error: procfile_readall() does not handle all the cases.");
+        }
+    }
+
+    if(likely(s > t && t < e)) {
+        if(unlikely(ff->len >= ff->size)) {
+            // we are going to loose the last byte
+            s = &ff->data[ff->size - 1];
+        }
+        *s = '\0';
+        __add_pfword(ff, t);
+        (*line_words)++;
     }
 }
 
-static void procfile_set_separators(struct proc_file *ff, char *seps)
+static void __procfile_init_defseps()
 {
+    int32_t i = 256;
+    while (i--) {
+        if (unlikely(i == '\n' || i == '\r'))
+            __def_seps_type[i] = PF_CHAR_IS_NEWLINE;
+
+        else if (unlikely(isspace(i) || !isprint(i)))
+            __def_seps_type[i] = PF_CHAR_IS_SEPARATOR;
+
+        else
+            __def_seps_type[i] = PF_CHAR_IS_WORD;
+    }
+}
+
+static void __procfile_set_separators(struct proc_file *ff, const char *seps)
+{
+    pthread_once(&__procfile_init_defseps_once, __procfile_init_defseps);
+
+    enum procfile_separator_type *ffs = ff->separators, *ffd = __def_seps_type,
+                                 *ffe = &__def_seps_type[256];
+    // 用defseps初始化ff->seperators
+    while (ffd != ffe) {
+        *ffs++ = *ffd++;
+    }
+
+    // 设置自定义的seps
+    if (unlikely(!seps))
+        seps = " \t=|";
+
+    ffs           = ff->separators;
+    const char *s = seps;
+    while (*s) {
+        ffs[(int)*s++] = PF_CHAR_IS_SEPARATOR;
+    }
 }
 
 struct proc_file *procfile_readall(struct proc_file *ff)
@@ -125,8 +293,8 @@ struct proc_file *procfile_readall(struct proc_file *ff)
               procfile_filename(ff), s, (ff->size - s));
         r = read(ff->fd, &ff->data[s], ff->size - s);
         if (unlikely(r < 0)) {
-            error("read file '%s' on fd %d failed, error %s", procfile_filename(ff), ff->fd,
-                  strerror(errno));
+            error("read file '%s' on fd %d failed, error %s",
+                  procfile_filename(ff), ff->fd, strerror(errno));
             procfile_close(ff);
             return NULL;
         }
@@ -136,9 +304,9 @@ struct proc_file *procfile_readall(struct proc_file *ff)
     debug("rewind file '%s'", procfile_filename(ff));
     lseek(ff->fd, 0, SEEK_SET);
 
-    reset_pfilines(ff->lines);
-    reset_pfwords(ff->words);
-    procfile_parser(ff);
+    __reset_pfilines(ff->lines);
+    __reset_pfwords(ff->words);
+    __procfile_parser(ff);
 
     debug("read file '%s' done", procfile_filename(ff));
 
@@ -165,30 +333,81 @@ struct proc_file *procfile_open(const char *filename, const char *separators,
     ff->size        = PROCFILE_DATA_BUFFER_SIZE;
     ff->len         = 0;
     ff->flags       = flags;
-    ff->lines       = new_pflines();
-    ff->words       = new_pfwords();
+    ff->lines       = __new_pflines();
+    ff->words       = __new_pfwords();
 
     // set separators 设置分隔符
-    procfile_set_separators(ff, separators);
+    __procfile_set_separators(ff, separators);
     return ff;
 }
 
 void procfile_close(struct proc_file *ff)
 {
-    if(unlikely(!ff))
+    if (unlikely(!ff))
         return;
 
     debug("close procfile %s", procfile_filename(ff));
 
-    if(likely(ff->lines))
-        free_pflines(ff->lines);
+    if (likely(ff->lines))
+        __free_pflines(ff->lines);
 
-    if(likely(ff->words))
-        free_pfwords(ff->words);
+    if (likely(ff->words))
+        __free_pfwords(ff->words);
 
-    if(likely(ff->fd != -1)) {
+    if (likely(ff->fd != -1)) {
         close(ff->fd);
         ff->fd = -1;
     }
     free(ff);
+}
+
+void procfile_set_quotes(struct proc_file *ff, const char *quotes)
+{
+    enum procfile_separator_type *seps = ff->separators;
+
+    // remote all quotes
+    int32_t index = 256;
+    while (index--) {
+        if (seps[index] == PF_CHAR_IS_QUOTE)
+            seps[index] = PF_CHAR_IS_WORD;
+    }
+
+    // if nothing given, return
+    if (unlikely(!quotes || !*quotes))
+        return;
+
+    // 字符串
+    const char *qs = quotes;
+    while (*qs) {
+        seps[(int)*qs++] = PF_CHAR_IS_QUOTE;
+    }
+}
+
+void procfile_set_open_close(struct proc_file *ff, const char *open,
+                             const char *close)
+{
+    enum procfile_separator_type *seps = ff->separators;
+
+    // remove all open/close
+    int32_t index = 256;
+    while (index--) {
+        if (unlikely(seps[index] == PF_CHAR_IS_OPEN ||
+                     seps[index] == PF_CHAR_IS_CLOSE))
+            seps[index] = PF_CHAR_IS_WORD;
+    }
+
+    // if nothing given, return
+    if (unlikely(!open || !*open || !close || !*close))
+        return;
+
+    // set the opens
+    const char *s = open;
+    while (*s) {
+        seps[(int)*s++] = PF_CHAR_IS_OPEN;
+    }
+
+    s = close;
+    while (*s) {
+        seps[(int)*s++] = PF_CHAR_IS_CLOSE;
+    }
 }
