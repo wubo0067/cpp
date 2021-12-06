@@ -1,20 +1,49 @@
-1. 编译
+1. x-monitor
+
+   - 编译
 
    ```
    cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
    make x-monitor VERBOSE=1
    ```
 
-2. 运行
+   - 运行
 
    ```
    bin/x-monitor -c ../env/config/x-monitor.cfg
    ```
 
-3. 停止
+   - 停止
 
    ```
    kill -15 `pidof x-monitor`
    ```
 
-   
+2. proc_file
+
+   - 编译
+
+     ```
+     make procfile_cli VERBOSE=1
+     ```
+
+   - 运行
+
+     ```
+     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats
+     ```
+
+3. perf_event_stack
+
+   - 编译
+
+     ```
+     make perf_event_stack_cli VERBOSE=1
+     ```
+
+   - 运行
+
+     
+
+
+

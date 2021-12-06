@@ -2,13 +2,16 @@
  * @Author: CALM.WU 
  * @Date: 2021-12-01 16:58:42 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-01 17:51:04
+ * @Last Modified time: 2021-12-06 14:31:32
  */
 
 #pragma once
 
 #include <stdint.h>
 #include <stdio.h>
+
+#define PROCFILE_FLAG_DEFAULT             0x00000000
+#define PROCFILE_FLAG_NO_ERROR_ON_FILE_IO 0x00000001
 
 struct pf_words {
     size_t len;     // used entries
@@ -67,6 +70,32 @@ extern char *procfile_filename(struct proc_file *ff);
 //
 extern void procfile_set_quotes(struct proc_file *ff, const char *quotes);
 
-// 
+//
 extern void procfile_set_open_close(struct proc_file *ff, const char *open,
                                     const char *close);
+
+//
+extern void procfile_print(struct proc_file *ff);
+
+//
+#define procfile_lines(ff) ((ff)->lines->len)
+//
+#define procfile_linewords(ff, line)                                           \
+    (((ff)->lines->len > (line)) ? (ff)->lines->lines[(line)].words : 0)
+
+// return the Nth word of the file, or empty string
+#define procfile_word(ff, word)                                                \
+    (((word) < (ff)->words->len) ? (ff)->words->words[(word)] : "")
+
+// return the first word of the Nth line, or empty string
+#define procfile_line(ff, line)                                                \
+    (((line) < procfile_lines(ff)) ?                                           \
+         procfile_word((ff), (ff)->lines->lines[(line)].first) :               \
+         "")
+
+// return the Nth word of the current line
+#define procfile_lineword(ff, line, word)                                      \
+    (((line) < procfile_lines(ff) &&                                           \
+      (word) < procfile_linewords((ff), (line))) ?                             \
+         procfile_word((ff), (ff)->lines->lines[(line)].first + (word)) :      \
+         "")

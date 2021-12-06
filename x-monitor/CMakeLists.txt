@@ -73,6 +73,7 @@ add_subdirectory(utils)
 add_subdirectory(cli/construct_init)
 add_subdirectory(cli/cachestat_cli)
 add_subdirectory(cli/perf_event_stack_cli)
+add_subdirectory(cli/procfile_cli)
 
 # 子目录源代码
 set(PLUGINSD_FILES
