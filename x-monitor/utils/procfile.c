@@ -62,7 +62,7 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
 
     // 如果容量不够，则扩容
     if (unlikely(lines->len == lines->size)) {
-        lines = (struct pf_lines *)realloc(
+        ff->lines = (struct pf_lines *)realloc(
             lines,
             sizeof(struct pf_lines) +
                 (lines->size + PFLINES_INCREASE_STEP) * sizeof(struct pf_line));
@@ -75,9 +75,10 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
     line->words = 0;
     line->first = ff->words->len;
 
-    fprintf(stderr, "adding line %lu at word %lu count: %lu line-addr %p\n",
-            lines->len, line->first, line->words, line);
-    //fprintf(stderr, "--- adding line %lu at word %lu count: %lu line-addr %p\n", lines->len, line->first, line->words, line);
+    debug("adding line %lu at word %lu count: %lu line-addr %p", lines->len,
+          line->first, line->words, line);
+    debug("--- adding line %lu at word %lu count: %lu line-addr %p", lines->len,
+          line->first, line->words, line);
 
     lines->len++;
     return &line->words;
@@ -403,19 +404,19 @@ void procfile_print(struct proc_file *ff) {
     size_t lines = procfile_lines(ff), l;
     char * s = NULL;
 
-    fprintf(stderr, "procfile '%s' has %lu lines and %lu words\n",
+    debug("procfile '%s' has %lu lines and %lu words",
             procfile_filename(ff), lines, ff->words->len);
 
     for (l = 0; l < lines; l++) {
         size_t words = procfile_linewords(ff, l);
 
-        fprintf(stderr, "line %lu starts at word %lu and has %lu words\n", l,
+        debug("line %lu starts at word %lu and has %lu words", l,
                 ff->lines->lines[l].first, words); //ff->lines->lines[l].words);
 
-        // size_t w;
-        // for (w = 0; w < words; w++) {
-        //     s = procfile_lineword(ff, l, w);
-        //     fprintf(stderr, "\t[%lu.%lu] '%s'", l, w, s);
-        // }
+        size_t w;
+        for (w = 0; w < words; w++) {
+            s = procfile_lineword(ff, l, w);
+            debug("\t[%lu.%lu] '%s'", l, w, s);
+        }
     }
 }

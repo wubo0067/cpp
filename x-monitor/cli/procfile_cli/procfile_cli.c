@@ -7,7 +7,7 @@
 
 #include "utils/common.h"
 #include "utils/procfile.h"
-//#include "utils/log.h"
+#include "utils/log.h"
 
 const char *seps = " \t:";
 
@@ -17,10 +17,10 @@ int32_t main(int32_t argc, char **argv) {
     char *log_cfg = argv[1];
     char *proc_file = argv[2];
 
-    // if(log_init(log_cfg, "procfile_cli") != 0) {
-    //     fprintf(stderr, "log init failed\n");
-    //     return -1;
-    // }
+    if(log_init(log_cfg, "procfile_cli") != 0) {
+        fprintf(stderr, "log init failed\n");
+        return -1;
+    }
 
     fprintf(stderr, "open proc file: %s", proc_file);
 
@@ -36,7 +36,7 @@ int32_t main(int32_t argc, char **argv) {
     
     procfile_close(pf);
 
-    // log_fini();
+    log_fini();
     
     return ret;
 }
