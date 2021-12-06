@@ -2,7 +2,7 @@
  * @Author: CALM.WU 
  * @Date: 2021-12-02 10:34:06 
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-06 14:50:59
+ * @Last Modified time: 2021-12-06 17:18:15
  */
 
 #include "procfile.h"
@@ -40,13 +40,11 @@ char *procfile_filename(struct proc_file *ff) {
 //-------------------------------------------------------------------------------------------------
 // lines
 static inline struct pf_lines *__new_pflines() {
-    // 默认的行
-    size_t size = PFLINES_INCREASE_STEP * sizeof(struct pf_line);
-
-    struct pf_lines *pfls =
-        (struct pf_lines *)malloc(sizeof(struct pf_lines) + size);
+    struct pf_lines *pfls = (struct pf_lines *)malloc(
+        sizeof(struct pf_lines) +
+        PFLINES_INCREASE_STEP * sizeof(struct pf_line));
     pfls->len = 0;
-    pfls->size = size;
+    pfls->size = PFLINES_INCREASE_STEP;
     return pfls;
 }
 
@@ -60,25 +58,29 @@ static inline void __free_pflines(struct pf_lines *pfls) {
 }
 
 static inline size_t *__add_pfline(struct proc_file *ff) {
-    struct pf_lines *pfls = ff->lines;
+    struct pf_lines *lines = ff->lines;
 
     // 如果容量不够，则扩容
-    if (unlikely(pfls->len == pfls->size)) {
-        size_t size =
-            pfls->size + PFLINES_INCREASE_STEP * sizeof(struct pf_line);
-        pfls = (struct pf_lines *)realloc(pfls, sizeof(struct pf_lines) + size);
+    if (unlikely(lines->len == lines->size)) {
+        lines = (struct pf_lines *)realloc(
+            lines,
+            sizeof(struct pf_lines) +
+                (lines->size + PFLINES_INCREASE_STEP) * sizeof(struct pf_line));
         // 扩展行的数量
-        pfls->size += PFLINES_INCREASE_STEP;
+        lines->size += PFLINES_INCREASE_STEP;
     }
 
     // 使用一个新行
-    struct pf_line *pfl = &pfls->lines[pfls->len++];
-    pfl->words = 0;
-    pfl->first = ff->words->len;
+    struct pf_line *line = &(lines->lines[lines->len]);
+    line->words = 0;
+    line->first = ff->words->len;
 
-    debug("adding line %lu at word %lu", pfls->len - 1, pfl->first);
+    fprintf(stderr, "adding line %lu at word %lu count: %lu line-addr %p\n",
+            lines->len, line->first, line->words, line);
+    //fprintf(stderr, "--- adding line %lu at word %lu count: %lu line-addr %p\n", lines->len, line->first, line->words, line);
 
-    return &pfl->words;
+    lines->len++;
+    return &line->words;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -86,12 +88,10 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
 
 static inline struct pf_words *__new_pfwords() {
     // 整个内容的word数组
-    size_t size = PFWORDS_INCREASE_STEP * sizeof(char *);
-
-    struct pf_words *pfw =
-        (struct pf_words *)malloc(sizeof(struct pf_words) + size);
+    struct pf_words *pfw = (struct pf_words *)malloc(
+        sizeof(struct pf_words) + PFWORDS_INCREASE_STEP * sizeof(char *));
     pfw->len = 0;
-    pfw->size = size;
+    pfw->size = PFWORDS_INCREASE_STEP;
     return pfw;
 }
 
@@ -107,9 +107,9 @@ static inline void __free_pfwords(struct pf_words *pfw) {
 static void __add_pfword(struct proc_file *ff, char *word) {
     struct pf_words *pfws = ff->words;
     if (unlikely(pfws->len == pfws->size)) {
-        size_t size = pfws->size + PFWORDS_INCREASE_STEP * sizeof(char *);
-        ff->words =
-            (struct pf_words *)realloc(pfws, sizeof(struct pf_words) + size);
+        ff->words = (struct pf_words *)realloc(
+            pfws, sizeof(struct pf_words) +
+                      (pfws->size + PFWORDS_INCREASE_STEP) * sizeof(char *));
         pfws->size += PFWORDS_INCREASE_STEP;
     }
 
@@ -268,8 +268,10 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
 
         if (unlikely(!x)) {
             // 空间不够，扩展
-            debug("procfile %s buffer size not enough, expand to %lu",
-                  procfile_filename(ff), ff->size + PROCFILE_DATA_BUFFER_SIZE);
+            fprintf(stderr,
+                    "procfile %s buffer size not enough, expand to %lu\n",
+                    procfile_filename(ff),
+                    ff->size + PROCFILE_DATA_BUFFER_SIZE);
             // 再增加一个PROCFILE_DATA_BUFFER_SIZE
             ff = (struct proc_file *)realloc(ff, sizeof(struct proc_file) +
                                                      ff->size +
@@ -277,8 +279,8 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
             ff->size += PROCFILE_DATA_BUFFER_SIZE;
         }
 
-        debug("read file '%s', from position %ld with length '%ld'",
-              procfile_filename(ff), s, (ff->size - s));
+        fprintf(stderr, "read file '%s', from position %ld with length '%ld'\n",
+                procfile_filename(ff), s, (ff->size - s));
         r = read(ff->fd, &ff->data[s], ff->size - s);
         if (unlikely(r < 0)) {
             error("read file '%s' on fd %d failed, error %s",
@@ -289,14 +291,14 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
         ff->len += r;
     }
 
-    debug("rewind file '%s'", procfile_filename(ff));
+    fprintf(stderr, "rewind file '%s'\n", procfile_filename(ff));
     lseek(ff->fd, 0, SEEK_SET);
 
     __reset_pfilines(ff->lines);
     __reset_pfwords(ff->words);
     __procfile_parser(ff);
 
-    debug("read file '%s' done", procfile_filename(ff));
+    fprintf(stderr, "read file '%s' done\n", procfile_filename(ff));
 
     return ff;
 }
@@ -304,7 +306,7 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
 // open a /proc or /sys file
 struct proc_file *procfile_open(const char *filename, const char *separators,
                                 uint32_t flags) {
-    debug("open procfile '%s'", filename);
+    fprintf(stderr, "open procfile '%s'\n", filename);
 
     int32_t fd = open(filename, O_RDONLY, 0666);
     if (unlikely(fd == -1)) {
@@ -333,7 +335,7 @@ void procfile_close(struct proc_file *ff) {
     if (unlikely(!ff))
         return;
 
-    debug("close procfile %s", procfile_filename(ff));
+    fprintf(stderr, "close procfile %s\n", procfile_filename(ff));
 
     if (likely(ff->lines))
         __free_pflines(ff->lines);
@@ -401,19 +403,19 @@ void procfile_print(struct proc_file *ff) {
     size_t lines = procfile_lines(ff), l;
     char * s = NULL;
 
-    debug("procfile '%s' has %lu lines and %lu words", procfile_filename(ff),
-          ff->lines->len, ff->words->len);
+    fprintf(stderr, "procfile '%s' has %lu lines and %lu words\n",
+            procfile_filename(ff), lines, ff->words->len);
 
     for (l = 0; l < lines; l++) {
         size_t words = procfile_linewords(ff, l);
 
-        debug("line %lu starts at word %lu and has %lu words", l,
-              ff->lines->lines[l].first, ff->lines->lines[l].words);
+        fprintf(stderr, "line %lu starts at word %lu and has %lu words\n", l,
+                ff->lines->lines[l].first, words); //ff->lines->lines[l].words);
 
-        size_t w;
-        for (w = 0; w < words; w++) {
-            s = procfile_lineword(ff, l, w);
-            debug("\t[%lu.%lu] '%s'", l, w, s);
-        }
+        // size_t w;
+        // for (w = 0; w < words; w++) {
+        //     s = procfile_lineword(ff, l, w);
+        //     fprintf(stderr, "\t[%lu.%lu] '%s'", l, w, s);
+        // }
     }
 }

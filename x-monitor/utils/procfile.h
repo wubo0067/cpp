@@ -10,12 +10,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define PROCFILE_FLAG_DEFAULT             0x00000000
+#define PROCFILE_FLAG_DEFAULT 0x00000000
 #define PROCFILE_FLAG_NO_ERROR_ON_FILE_IO 0x00000001
 
 struct pf_words {
-    size_t len;     // used entries
-    size_t size;    // capacity
+    size_t len;     // used entries 挡墙字数
+    size_t size;    // capacity 字的最大容量
     char * words[]; // array of pointers
 };
 
