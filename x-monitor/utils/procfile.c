@@ -60,13 +60,15 @@ static inline void __free_pflines(struct pf_lines *pfls) {
 static inline size_t *__add_pfline(struct proc_file *ff) {
     struct pf_lines *lines = ff->lines;
 
-    // 如果容量不够，则扩容
+    // 容量已满，扩容
     if (unlikely(lines->len == lines->size)) {
+        // realloc返回的地址可能与原地址不同，所以需要重新赋值
         ff->lines = (struct pf_lines *)realloc(
             lines,
             sizeof(struct pf_lines) +
                 (lines->size + PFLINES_INCREASE_STEP) * sizeof(struct pf_line));
-        // 扩展行的数量
+        lines = ff->lines;
+        // 行容量扩容
         lines->size += PFLINES_INCREASE_STEP;
     }
 
@@ -75,10 +77,8 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
     line->words = 0;
     line->first = ff->words->len;
 
-    debug("adding line %lu at word %lu count: %lu line-addr %p", lines->len,
-          line->first, line->words, line);
-    debug("--- adding line %lu at word %lu count: %lu line-addr %p", lines->len,
-          line->first, line->words, line);
+    debug("adding line %lu at word %lu count: %lu", lines->len, line->first,
+          line->words);
 
     lines->len++;
     return &line->words;
@@ -111,6 +111,7 @@ static void __add_pfword(struct proc_file *ff, char *word) {
         ff->words = (struct pf_words *)realloc(
             pfws, sizeof(struct pf_words) +
                       (pfws->size + PFWORDS_INCREASE_STEP) * sizeof(char *));
+        pfws = ff->words;
         pfws->size += PFWORDS_INCREASE_STEP;
     }
 
@@ -404,14 +405,14 @@ void procfile_print(struct proc_file *ff) {
     size_t lines = procfile_lines(ff), l;
     char * s = NULL;
 
-    debug("procfile '%s' has %lu lines and %lu words",
-            procfile_filename(ff), lines, ff->words->len);
+    debug("procfile '%s' has %lu lines and %lu words", procfile_filename(ff),
+          lines, ff->words->len);
 
     for (l = 0; l < lines; l++) {
         size_t words = procfile_linewords(ff, l);
 
         debug("line %lu starts at word %lu and has %lu words", l,
-                ff->lines->lines[l].first, words); //ff->lines->lines[l].words);
+              ff->lines->lines[l].first, words); //ff->lines->lines[l].words);
 
         size_t w;
         for (w = 0; w < words; w++) {
