@@ -15,6 +15,7 @@
 #include "utils/popen.h"
 #include "utils/signals.h"
 #include "utils/consts.h"
+#include "utils/clocks.h"
 
 #include "appconfig/appconfig.h"
 #include "plugins.d/plugins_d.h"
@@ -225,6 +226,8 @@ int32_t main(int32_t argc, char *argv[])
     // 信号初始化
     signals_block();
     signals_init();
+
+    test_clock_monotonic_coarse();
 
     info("---start mypopen running pid: %d---", getpid());
 
