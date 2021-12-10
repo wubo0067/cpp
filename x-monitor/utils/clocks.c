@@ -62,7 +62,7 @@ usec_t heartbeat_next(struct heartbeat *hb, usec_t tick) {
     now.monotonic = now_monotonic_usec();
     now.realtime = now_realtime_usec();
 
-    // 下一次心跳时间，必须是整数倍
+    // 下一次心跳时间，必须是tick(毫秒)整数倍
     usec_t next_monotonic = now.monotonic - (now.monotonic % tick) + tick;
 
     // sleep到下一次心跳时间
