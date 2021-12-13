@@ -6,6 +6,7 @@
  */
 
 #include "strings.h"
+#include "compiler.h"
 
 int32_t str_split_to_nums(const char *str, const char *delim, uint64_t *nums,
                           uint16_t nums_max_size) {
@@ -167,14 +168,14 @@ long double str2ld(const char *s, char **endptr) {
 }
 
 uint32_t bkrd_hash(const void *key, size_t len) {
-	uint8_t* key = NULL;
-	uint8_t* end = NULL;
+	uint8_t* p_key = NULL;
+	uint8_t* p_end = NULL;
 	uint32_t seed = 131; //  31 131 1313 13131 131313 etc..
 	uint32_t hash = 0;
 
-	end = ( uint8_t* ) key + len;
-	for ( key = ( uint8_t* ) key; key != end; key++ ) {
-		hash = hash * seed + ( *key );
+	p_end = ( uint8_t* ) key + len;
+	for ( p_key = ( uint8_t* ) key; p_key != p_end; p_key++ ) {
+		hash = hash * seed + ( *p_key );
 	}
 
 	return hash;    

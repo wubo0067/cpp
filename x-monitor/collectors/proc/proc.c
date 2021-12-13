@@ -83,23 +83,25 @@ void *proc_routine_start(void *arg) {
     debug("[%s] routine start", __name);
 
     int32_t index = 0;
-    int32_t rrd_update_every = appconfig_get_int("collector_proc.rrd_update_every", 1);
+    int32_t rrd_update_every =
+        appconfig_get_int("collector_proc.rrd_update_every", 1);
 
     // 每次更新的时间间隔，单位微秒
-    usect_t step_microseconds = rrd_update_every * USEC_PER_SEC;
+    usec_t step_microseconds = rrd_update_every * USEC_PER_SEC;
+
     struct heartbeat hb;
     heartbeat_init(&hb);
 
     while (!__collector_proc.exit_flag) {
         usec_t dt = heartbeat_next(&hb, step_microseconds);
 
-        if(unlikely(__collector_proc.exit_flag)) {
+        if (unlikely(__collector_proc.exit_flag)) {
             break;
         }
 
-        for(index = 0; __collector_proc.modules[index].name; index++) {
+        for (index = 0; __collector_proc.modules[index].name; index++) {
             struct proc_metrics_module *pmm = &__collector_proc.modules[index];
-            if(unlikely(!pmm->enabled)) {
+            if (unlikely(!pmm->enabled)) {
                 continue;
             }
 
@@ -107,7 +109,7 @@ void *proc_routine_start(void *arg) {
 
             pmm->func(rrd_update_every, dt);
 
-            if(unlikely(__collector_proc.exit_flag)) {
+            if (unlikely(__collector_proc.exit_flag)) {
                 break;
             }
         }

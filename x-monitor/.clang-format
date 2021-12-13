@@ -47,7 +47,7 @@ BraceWrapping:
 BreakBeforeBinaryOperators: None
 BreakBeforeBraces: Custom
 #BreakBeforeInheritanceComma: false # Unknown to clang-format-4.0
-BreakBeforeTernaryOperators: false
+BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: false
 #BreakConstructorInitializers: BeforeComma # Unknown to clang-format-4.0
 BreakAfterJavaFieldAnnotations: false
@@ -500,8 +500,12 @@ ForEachMacros:
 
 #IncludeBlocks: Preserve # Unknown to clang-format-5.0
 IncludeCategories:
-  - Regex: '.*'
-    Priority: 1
+  - Regex:  '^"(llvm|llvm-c|clang|clang-c)/'
+    Priority:   2
+  - Regex:  '^(<|"(gtest|isl|json)/)'
+    Priority:   3
+  - Regex:  '.*'
+    Priority:   1
 IncludeIsMainRegex: '(Test)?$'
 IndentCaseLabels: false
 #IndentPPDirectives: None # Unknown to clang-format-5.0

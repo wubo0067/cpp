@@ -38,6 +38,7 @@ struct heartbeat {
 
 //
 extern time_t now_realtime_sec();
+extern usec_t now_realtime_usec();
 
 extern time_t now_monotonic_sec();
 extern usec_t now_monotonic_usec();

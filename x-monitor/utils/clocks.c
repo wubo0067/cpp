@@ -72,7 +72,7 @@ usec_t heartbeat_next(struct heartbeat *hb, usec_t tick) {
         now.realtime = now_realtime_usec();
     }
 
-    if (likely(hb->realtime != NULL)) {
+    if (likely(hb->realtime != 0ULL)) {
         usec_t dt_monotonic = now.monotonic - hb->monotonic;
         usec_t dt_realtime = now.realtime - hb->realtime;
 
@@ -81,7 +81,7 @@ usec_t heartbeat_next(struct heartbeat *hb, usec_t tick) {
 
         if (unlikely(dt_monotonic >= tick + tick / 2)) {
             errno = 0;
-            error("heartbeat missed %llu monotonic microseconds",
+            error("heartbeat missed %lu monotonic microseconds",
                   dt_monotonic - tick);
         }
 
@@ -107,12 +107,12 @@ int32_t sleep_usec(usec_t usec) {
     while (nanosleep(&req, &rem) == -1) {
         if (likely(errno == EINTR)) {
             debug(
-                "nanosleep() interrupted (while sleeping for %llu microseconds).",
+                "nanosleep() interrupted (while sleeping for %lu microseconds).",
                 usec);
             req.tv_sec = rem.tv_sec;
             req.tv_nsec = rem.tv_nsec;
         } else {
-            error("Cannot nanosleep() for %llu microseconds.", usec);
+            error("Cannot nanosleep() for %lu microseconds.", usec);
             break;
         }
     }
