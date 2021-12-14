@@ -77,8 +77,7 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
     line->words = 0;
     line->first = ff->words->len;
 
-    debug("adding line %lu at word %lu count: %lu", lines->len, line->first,
-          line->words);
+    debug("adding line %lu at word %lu", lines->len, line->first);
 
     lines->len++;
     return &line->words;
@@ -270,10 +269,8 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
 
         if (unlikely(!x)) {
             // 空间不够，扩展
-            fprintf(stderr,
-                    "procfile %s buffer size not enough, expand to %lu\n",
-                    procfile_filename(ff),
-                    ff->size + PROCFILE_DATA_BUFFER_SIZE);
+            debug("procfile %s buffer size not enough, expand to %lu",
+                  procfile_filename(ff), ff->size + PROCFILE_DATA_BUFFER_SIZE);
             // 再增加一个PROCFILE_DATA_BUFFER_SIZE
             ff = (struct proc_file *)realloc(ff, sizeof(struct proc_file) +
                                                      ff->size +
@@ -281,7 +278,7 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
             ff->size += PROCFILE_DATA_BUFFER_SIZE;
         }
 
-        fprintf(stderr, "read file '%s', from position %ld with length '%ld'\n",
+        debug("read file '%s', from position %ld with length '%ld'",
                 procfile_filename(ff), s, (ff->size - s));
         r = read(ff->fd, &ff->data[s], ff->size - s);
         if (unlikely(r < 0)) {
@@ -293,14 +290,14 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
         ff->len += r;
     }
 
-    fprintf(stderr, "rewind file '%s'\n", procfile_filename(ff));
+    debug("rewind file '%s'", procfile_filename(ff));
     lseek(ff->fd, 0, SEEK_SET);
 
     __reset_pfilines(ff->lines);
     __reset_pfwords(ff->words);
     __procfile_parser(ff);
 
-    fprintf(stderr, "read file '%s' done\n", procfile_filename(ff));
+    debug("read file '%s' done", procfile_filename(ff));
 
     return ff;
 }
@@ -308,7 +305,7 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
 // open a /proc or /sys file
 struct proc_file *procfile_open(const char *filename, const char *separators,
                                 uint32_t flags) {
-    fprintf(stderr, "open procfile '%s'\n", filename);
+    debug("open procfile '%s'", filename);
 
     int32_t fd = open(filename, O_RDONLY, 0666);
     if (unlikely(fd == -1)) {
@@ -337,7 +334,7 @@ void procfile_close(struct proc_file *ff) {
     if (unlikely(!ff))
         return;
 
-    fprintf(stderr, "close procfile %s\n", procfile_filename(ff));
+    debug("close procfile %s", procfile_filename(ff));
 
     if (likely(ff->lines))
         __free_pflines(ff->lines);

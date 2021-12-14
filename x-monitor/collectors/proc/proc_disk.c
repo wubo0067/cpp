@@ -67,8 +67,8 @@ struct io_device {
     enum disk_type dev_tp;
 
     struct io_stats stats[2];
-    uint32_t        course_curr_stats;
-    uint32_t        course_prev_stats;
+    uint32_t        curr_stats_id;
+    uint32_t        prev_stats_id;
 
     struct io_device *next;
 };
@@ -144,7 +144,7 @@ static struct io_device *__get_device(char *device_name, uint32_t major,
     dev->minor = minor;
     dev->device_hash = hash;
     dev->dev_tp = __get_device_type(device_name, major, minor);
-    dev->course_curr_stats = dev->course_prev_stats = 0;
+    dev->curr_stats_id = dev->prev_stats_id = 0;
 
     if (unlikely(!__iodev_list)) {
         __iodev_list = dev;
@@ -160,7 +160,6 @@ static struct io_device *__get_device(char *device_name, uint32_t major,
 }
 
 int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
-
     if (unlikely(!__pf_diskstats)) {
         __pf_diskstats =
             procfile_open(__proc_disk_filename, " \t", PROCFILE_FLAG_DEFAULT);
@@ -197,7 +196,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
         dev_name = procfile_lineword(__pf_diskstats, l, 2);
 
         struct io_device *dev = __get_device(dev_name, major, minor);
-        struct io_stats * curr_devstats = &dev->stats[dev->course_curr_stats];
+        struct io_stats * curr_devstats = &dev->stats[dev->curr_stats_id];
 
         curr_devstats->rd_ios =
             str2uint64_t(procfile_lineword(__pf_diskstats, l, 3));
@@ -240,27 +239,32 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
         }
 
         debug(
-            "diskstats[%d:%d]: dev_name='%s' rd_ios=%lu, wr_ios=%lu, rd_merges=%lu, wr_merges=%lu, rd_sectors=%lu, wr_sectors=%lu, rd_ticks=%lu, wr_ticks=%lu, ios_pgr=%lu, tot_ticks=%lu, rq_ticks=%lu",
-            major, minor, dev_name, curr_devstats->rd_ios,
-            curr_devstats->wr_ios, curr_devstats->rd_merges,
-            curr_devstats->wr_merges, curr_devstats->rd_sectors,
-            curr_devstats->wr_sectors, curr_devstats->rd_ticks,
+            "\ndiskstats[%d:%d]: %s rd_ios=%lu, rd_merges=%lu, rd_sectors=%lu, rd_ticks=%lu, wr_ios=%lu, wr_merges=%lu, wr_sectors=%lu, wr_ticks=%lu, ios_pgr=%lu, tot_ticks=%lu, rq_ticks=%lu, dc_ios=%lu, dc_merges=%lu, dc_sectors=%lu, dc_ticks=%lu",
+            dev->major, dev->minor, dev->device_name, curr_devstats->rd_ios,
+            curr_devstats->rd_merges, curr_devstats->rd_sectors,
+            curr_devstats->rd_ticks, curr_devstats->wr_ios,
+            curr_devstats->wr_merges, curr_devstats->wr_sectors,
             curr_devstats->wr_ticks, curr_devstats->ios_pgr,
-            curr_devstats->tot_ticks, curr_devstats->rq_ticks);
+            curr_devstats->tot_ticks, curr_devstats->rq_ticks,
+            curr_devstats->dc_ios, curr_devstats->dc_merges,
+            curr_devstats->dc_sectors, curr_devstats->dc_ticks);
 
-        if (unlikely(0 == dev->course_curr_stats &&
-                     0 == dev->course_prev_stats)) {
+        if (unlikely(0 == dev->curr_stats_id && 0 == dev->prev_stats_id)) {
+            dev->curr_stats_id = (dev->curr_stats_id + 1) % 2;
+            debug("diskstats[%d:%d]: %s prev_stats_id = %d, curr_stats_id = %d",
+                  major, minor, dev_name, dev->prev_stats_id,
+                  dev->curr_stats_id);
             continue;
         }
 
         //--------------------------------------------------------------------
         // do performance metrics
-        struct io_stats *prev_devstats = &dev->stats[dev->course_prev_stats];
+        struct io_stats *prev_devstats = &dev->stats[dev->prev_stats_id];
 
         // 计算两次采集间隔时间，单位秒
         double dt_sec = (double)dt / USEC_PER_SEC;
-        debug("diskstats[%d:%d]: dt_sec=%.2f, dt=%lu", major, minor, dt_sec,
-              dt);
+        debug("diskstats[%d:%d]: %s dt_sec=%.2f, dt=%lu", major, minor,
+              dev_name, dt_sec, dt);
 
         // IO每秒读次数
         double rd_ios_per_sec =
@@ -322,7 +326,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
         // 该硬盘设备的繁忙比率
         double utils =
             ((double)(curr_devstats->tot_ticks - prev_devstats->tot_ticks)) /
-            dt_sec;
+            dt_sec / 10.0;
         ;
 
         // 每个I/O的平均扇区数
@@ -330,31 +334,36 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
             (curr_nr_ios - prev_nr_ios)
                 ? ((curr_devstats->rd_sectors - prev_devstats->rd_sectors) +
                    (curr_devstats->wr_sectors - prev_devstats->wr_sectors)) /
-                      ((double)(curr_nr_ios - prev_nr_ios))
+                      ((double)(curr_nr_ios - prev_nr_ios)) / 2.0
                 : 0.0;
         // /* rareq-sz (still in sectors, not kB) */
         double rarq_sz =
             (curr_devstats->rd_ios - prev_devstats->rd_ios)
                 ? (curr_devstats->rd_sectors - prev_devstats->rd_sectors) /
-                      (double)(curr_devstats->rd_ios - prev_devstats->rd_ios)
+                      (double)(curr_devstats->rd_ios - prev_devstats->rd_ios) /
+                      2.0
                 : 0.0;
-        double warg_sz =
+        double warq_sz =
             (curr_devstats->wr_ios - prev_devstats->wr_ios)
                 ? (curr_devstats->wr_sectors - prev_devstats->wr_sectors) /
-                      (double)(curr_devstats->wr_ios - prev_devstats->wr_ios)
+                      (double)(curr_devstats->wr_ios - prev_devstats->wr_ios) /
+                      2.0
                 : 0.0;
 
-        debug("diskstats[%d:%d]: rd_ios_per_sec=%.2f, rw_ios_per_sec=%.2f, "
-              "rd_kb_per_sec=%.2f, wr_kb_per_sec=%.2f, rd_merges_per_sec=%.2f, "
-              "wr_merges_per_sec=%.2f, r_await=%.2f, w_await=%.2f, await=%.2f, "
-              "aqu_sz=%.2f, utils=%.2f, arq_sz=%.2f, rarq_sz=%.2f, warg_sz=%.2f",
-              major, minor, rd_ios_per_sec, rw_ios_per_sec, rd_kb_per_sec,
-              wr_kb_per_sec, rd_merges_per_sec, wr_merges_per_sec, r_await,
-              w_await, await, aqu_sz, utils, arq_sz, rarq_sz, warg_sz);
+        debug(
+            "\ndiskstats[%d:%d]: %s rd_ios_per_sec=%.2f, rw_ios_per_sec=%.2f, "
+            "rd_kb_per_sec=%.2f, wr_kb_per_sec=%.2f, rd_merges_per_sec=%.2f, "
+            "wr_merges_per_sec=%.2f, r_await=%.2f, w_await=%.2f, await=%.2f, "
+            "aqu_sz=%.2f, utils=%.2f, arq_sz=%.2f, rarq_sz=%.2f, warq_sz=%.2f\n",
+            major, minor, dev_name, rd_ios_per_sec, rw_ios_per_sec,
+            rd_kb_per_sec, wr_kb_per_sec, rd_merges_per_sec, wr_merges_per_sec,
+            r_await, w_await, await, aqu_sz, utils, arq_sz, rarq_sz, warq_sz);
 
         // --------------------------------------------------------------------
-        dev->course_prev_stats = dev->course_curr_stats;
-        dev->course_curr_stats = (dev->course_curr_stats + 1) % 2;
+        dev->prev_stats_id = dev->curr_stats_id;
+        dev->curr_stats_id = (dev->curr_stats_id + 1) % 2;
+        debug("diskstats[%d:%d]: %s prev_stats_id = %d, curr_stats_id = %d",
+              major, minor, dev_name, dev->prev_stats_id, dev->curr_stats_id);
     }
 
     return 0;

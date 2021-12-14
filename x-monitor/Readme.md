@@ -30,8 +30,8 @@
    - 运行
 
      ```
-     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats
-     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo
+     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/diskstats 10
+     bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo 10
      ```
 
 3. perf_event_stack
