@@ -31,6 +31,8 @@ extern int32_t bpf_printf(enum libbpf_print_level level, const char *fmt,
 
 extern const char *bpf_get_ksym_name(uint64_t addr);
 
+extern int32_t open_raw_sock(const char *iface);
+
 // struct perf_event_attr;
 
 // static inline int sys_perf_event_open(struct perf_event_attr *attr, pid_t pid,

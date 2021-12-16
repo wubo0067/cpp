@@ -1,4 +1,4 @@
-1. x-monitor
+1. ##### x-monitor
 
    - 编译
 
@@ -19,7 +19,7 @@
    kill -15 `pidof x-monitor`
    ```
 
-2. proc_file
+2. ##### proc_file
 
    - 编译
 
@@ -34,7 +34,7 @@
      bin/procfile_cli ../cli/procfile_cli/log.cfg /proc/meminfo 10
      ```
 
-3. perf_event_stack
+3. ##### perf_event_stack
 
    - 编译
 
@@ -44,7 +44,28 @@
 
    - 运行
 
+4. ##### proto_statistics_cli
+
+   - 编译
+
+     ```
+     make proto_statistics_cli VERBOSE=1
+     ```
+
+   - 查看map数据
+
+     ```
+     bpftool map dump name proto_countmap
+     ```
+
+   - 运行
+
+     ```
+     bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
+     ```
+
      
+
 
 
 

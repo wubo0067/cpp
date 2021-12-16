@@ -34,3 +34,25 @@ const char *bpf_get_ksym_name(uint64_t addr)
 
     return sym->name;
 }
+
+int32_t open_raw_sock(const char *iface) {
+    struct sockaddr_ll sll; 
+    int32_t sock;
+
+    sock = socket(PF_PACKET, SOCK_RAW | SOCK_NONBLOCK | SOCK_CLOEXEC, htons(ETH_P_ALL));
+    if (sock < 0) {
+        fprintf(stderr, "socket() create raw socket failed: %s\n", strerror(errno));
+        return -errno;
+    }
+
+    memset(&sll, 0, sizeof(sll));
+    sll.sll_family = AF_PACKET;
+    sll.sll_ifindex = if_nametoindex(iface);
+    sll.sll_protocol = htons(ETH_P_ALL);
+    if(bind(sock, (struct sockaddr *)&sll, sizeof(sll)) < 0) {
+        fprintf(stderr, "bind() to '%s' failed: %s\n", iface, strerror(errno));
+        close(sock);
+        return -errno;
+    }
+    return sock;
+}

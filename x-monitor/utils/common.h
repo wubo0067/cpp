@@ -31,7 +31,6 @@ extern "C" {
 #include <pwd.h>
 #include <limits.h>
 #include <locale.h>
-#include <net/if.h>
 #include <poll.h>
 #include <signal.h>
 #include <syslog.h>
@@ -51,6 +50,9 @@ extern "C" {
 #include <assert.h>
 #include <stdbool.h>
 #include <math.h>
+#include <linux/if_ether.h>
+#include <net/if.h>
+#include <linux/if_packet.h>
 
 #define __new(T) (typeof(T))calloc(1, sizeof(T))
 #define __delete(P) free((void*)(P))

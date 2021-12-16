@@ -187,7 +187,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
 
         size_t pf_diskstats_line_words = procfile_linewords(__pf_diskstats, l);
         if (unlikely(pf_diskstats_line_words < 14)) {
-            error("Cannot read /proc/diskstats: line %zu is too short.", l);
+            //error("Cannot read /proc/diskstats: line %zu is too short.", l);
             continue;
         }
 
@@ -238,22 +238,22 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
                 str2uint64_t(procfile_lineword(__pf_diskstats, l, 17));
         }
 
-        debug(
-            "\ndiskstats[%d:%d]: %s rd_ios=%lu, rd_merges=%lu, rd_sectors=%lu, rd_ticks=%lu, wr_ios=%lu, wr_merges=%lu, wr_sectors=%lu, wr_ticks=%lu, ios_pgr=%lu, tot_ticks=%lu, rq_ticks=%lu, dc_ios=%lu, dc_merges=%lu, dc_sectors=%lu, dc_ticks=%lu",
-            dev->major, dev->minor, dev->device_name, curr_devstats->rd_ios,
-            curr_devstats->rd_merges, curr_devstats->rd_sectors,
-            curr_devstats->rd_ticks, curr_devstats->wr_ios,
-            curr_devstats->wr_merges, curr_devstats->wr_sectors,
-            curr_devstats->wr_ticks, curr_devstats->ios_pgr,
-            curr_devstats->tot_ticks, curr_devstats->rq_ticks,
-            curr_devstats->dc_ios, curr_devstats->dc_merges,
-            curr_devstats->dc_sectors, curr_devstats->dc_ticks);
+        // debug(
+        //     "\ndiskstats[%d:%d]: %s rd_ios=%lu, rd_merges=%lu, rd_sectors=%lu, rd_ticks=%lu, wr_ios=%lu, wr_merges=%lu, wr_sectors=%lu, wr_ticks=%lu, ios_pgr=%lu, tot_ticks=%lu, rq_ticks=%lu, dc_ios=%lu, dc_merges=%lu, dc_sectors=%lu, dc_ticks=%lu",
+        //     dev->major, dev->minor, dev->device_name, curr_devstats->rd_ios,
+        //     curr_devstats->rd_merges, curr_devstats->rd_sectors,
+        //     curr_devstats->rd_ticks, curr_devstats->wr_ios,
+        //     curr_devstats->wr_merges, curr_devstats->wr_sectors,
+        //     curr_devstats->wr_ticks, curr_devstats->ios_pgr,
+        //     curr_devstats->tot_ticks, curr_devstats->rq_ticks,
+        //     curr_devstats->dc_ios, curr_devstats->dc_merges,
+        //     curr_devstats->dc_sectors, curr_devstats->dc_ticks);
 
         if (unlikely(0 == dev->curr_stats_id && 0 == dev->prev_stats_id)) {
             dev->curr_stats_id = (dev->curr_stats_id + 1) % 2;
-            debug("diskstats[%d:%d]: %s prev_stats_id = %d, curr_stats_id = %d",
-                  major, minor, dev_name, dev->prev_stats_id,
-                  dev->curr_stats_id);
+            // debug("disk[%d:%d]:'%s' prev_stats_id = %d, curr_stats_id = %d",
+            //       major, minor, dev_name, dev->prev_stats_id,
+            //       dev->curr_stats_id);
             continue;
         }
 
@@ -262,8 +262,8 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
         struct io_stats *prev_devstats = &dev->stats[dev->prev_stats_id];
 
         // 计算两次采集间隔时间，单位秒
-        double dt_sec = (double)dt / USEC_PER_SEC;
-        debug("diskstats[%d:%d]: %s dt_sec=%.2f, dt=%lu", major, minor,
+        double dt_sec = (double)dt / (double)USEC_PER_SEC;
+        debug("disk[%d:%d]:'%s' dt_sec=%.2f, dt=%lu", major, minor,
               dev_name, dt_sec, dt);
 
         // IO每秒读次数
@@ -351,19 +351,19 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
                 : 0.0;
 
         debug(
-            "\ndiskstats[%d:%d]: %s rd_ios_per_sec=%.2f, rw_ios_per_sec=%.2f, "
-            "rd_kb_per_sec=%.2f, wr_kb_per_sec=%.2f, rd_merges_per_sec=%.2f, "
-            "wr_merges_per_sec=%.2f, r_await=%.2f, w_await=%.2f, await=%.2f, "
-            "aqu_sz=%.2f, utils=%.2f, arq_sz=%.2f, rarq_sz=%.2f, warq_sz=%.2f\n",
+            "\n\tdisk[%d:%d]:'%s' rd_ios_per_sec=%.2f(r/s), rw_ios_per_sec=%.2f(w/s), "
+            "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), rd_merges_per_sec=%.2f(rrqm/s), "
+            "wr_merges_per_sec=%.2f(wrqm/s), r_await=%.2f(ms), w_await=%.2f(ms), await=%.2f(ms), "
+            "aqu_sz=%.2f, arq_sz=%.2f, rarq_sz=%.2f, warq_sz=%.2f， utils=%.2f\n",
             major, minor, dev_name, rd_ios_per_sec, rw_ios_per_sec,
             rd_kb_per_sec, wr_kb_per_sec, rd_merges_per_sec, wr_merges_per_sec,
-            r_await, w_await, await, aqu_sz, utils, arq_sz, rarq_sz, warq_sz);
+            r_await, w_await, await, aqu_sz, arq_sz, rarq_sz, warq_sz, utils);
 
         // --------------------------------------------------------------------
         dev->prev_stats_id = dev->curr_stats_id;
         dev->curr_stats_id = (dev->curr_stats_id + 1) % 2;
-        debug("diskstats[%d:%d]: %s prev_stats_id = %d, curr_stats_id = %d",
-              major, minor, dev_name, dev->prev_stats_id, dev->curr_stats_id);
+        // debug("disk[%d:%d]:'%s' prev_stats_id = %d, curr_stats_id = %d",
+        //       major, minor, dev_name, dev->prev_stats_id, dev->curr_stats_id);
     }
 
     return 0;

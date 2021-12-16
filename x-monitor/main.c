@@ -62,22 +62,20 @@ static struct xmonitor_static_routine_list __xmonitor_static_routine_list = {
     NULL, NULL, 0
 };
 
-void register_xmonitor_static_routine(struct xmonitor_static_routine *routine)
-{
+void register_xmonitor_static_routine(struct xmonitor_static_routine *routine) {
     if (__xmonitor_static_routine_list.root == NULL) {
         __xmonitor_static_routine_list.root = routine;
         __xmonitor_static_routine_list.last = routine;
     } else {
         __xmonitor_static_routine_list.last->next = routine;
-        __xmonitor_static_routine_list.last       = routine;
+        __xmonitor_static_routine_list.last = routine;
     }
     ++__xmonitor_static_routine_list.static_routine_count;
     fprintf(stdout, "[%d] static_routine: '%s' registered\n",
             __xmonitor_static_routine_list.static_routine_count, routine->name);
 }
 
-void help()
-{
+void help() {
     int32_t num_opts = (int32_t)ARRAY_SIZE(option_definitions);
     int32_t i;
     int32_t max_len_arg = 0;
@@ -116,9 +114,8 @@ void help()
     for (i = 0; i < num_opts; i++) {
         fprintf(stderr, "  -%c %-*s  %s", option_definitions[i].val,
                 max_len_arg,
-                option_definitions[i].arg_name ?
-                    option_definitions[i].arg_name :
-                    "",
+                option_definitions[i].arg_name ? option_definitions[i].arg_name
+                                               : "",
                 option_definitions[i].description);
         if (option_definitions[i].default_value) {
             fprintf(stderr, "\n   %c %-*s  Default: %s\n", ' ', max_len_arg, "",
@@ -132,8 +129,7 @@ void help()
     return;
 }
 
-static void on_signal(int32_t signo, enum signal_action_mode mode)
-{
+static void on_signal(int32_t signo, enum signal_action_mode mode) {
     if (E_SIGNAL_EXIT_CLEANLY == mode) {
         if (pid_file != NULL && pid_file[0] != '\0') {
             info("EXIT: removing pid file '%s'", pid_file);
@@ -159,13 +155,12 @@ static void on_signal(int32_t signo, enum signal_action_mode mode)
     }
 }
 
-int32_t main(int32_t argc, char *argv[])
-{
+int32_t main(int32_t argc, char *argv[]) {
     char    UNUSED(buf[BUF_SIZE]) = { 0 };
-    pid_t   UNUSED(child_pid)     = 0;
-    int32_t dont_fork             = 0;
-    int32_t config_loaded         = 0;
-    int32_t ret                   = 0;
+    pid_t   UNUSED(child_pid) = 0;
+    int32_t dont_fork = 0;
+    int32_t config_loaded = 0;
+    int32_t ret = 0;
 
     // parse options
     {
@@ -183,7 +178,7 @@ int32_t main(int32_t argc, char *argv[])
         }
 
         // terminate optstring
-        opt_str[opt_str_i]        = '\0';
+        opt_str[opt_str_i] = '\0';
         opt_str[(opts_count * 2)] = '\0';
 
         int32_t opt = 0;
@@ -237,7 +232,8 @@ int32_t main(int32_t argc, char *argv[])
     for (; routine; routine = routine->next) {
         // 判断是否enable
         if (routine->config_name) {
-            routine->enabled = appconfig_get_member_bool(routine->config_name, "enable", 0);
+            routine->enabled =
+                appconfig_get_member_bool(routine->config_name, "enable", 0);
         }
 
         if (routine->enabled && NULL != routine->init_routine) {

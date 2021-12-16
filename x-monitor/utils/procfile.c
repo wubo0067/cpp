@@ -77,7 +77,7 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
     line->words = 0;
     line->first = ff->words->len;
 
-    debug("adding line %lu at word %lu", lines->len, line->first);
+    //debug("adding line %lu at word %lu", lines->len, line->first);
 
     lines->len++;
     return &line->words;
@@ -278,8 +278,8 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
             ff->size += PROCFILE_DATA_BUFFER_SIZE;
         }
 
-        debug("read file '%s', from position %ld with length '%ld'",
-                procfile_filename(ff), s, (ff->size - s));
+        // debug("read file '%s', from position %ld with length '%ld'",
+        //         procfile_filename(ff), s, (ff->size - s));
         r = read(ff->fd, &ff->data[s], ff->size - s);
         if (unlikely(r < 0)) {
             error("read file '%s' on fd %d failed, error %s",
