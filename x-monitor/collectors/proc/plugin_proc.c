@@ -1,13 +1,14 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-11-30 14:59:18 
+ * @Author: CALM.WU
+ * @Date: 2021-11-30 14:59:18
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-30 17:16:44
+ * @Last Modified time: 2021-12-20 17:40:25
  */
 
-#include "proc.h"
+#include "plugin_proc.h"
 #include "proc_disk.h"
 
+#include "utils/common.h"
 #include "utils/compiler.h"
 #include "utils/log.h"
 #include "utils/clocks.h"
@@ -17,7 +18,7 @@
 #include "appconfig/appconfig.h"
 
 static const char *__name = "PLUGIN_PROC";
-static const char *__config_name = "collector_proc";
+static const char *__config_name = "collector_plugin_proc";
 
 struct proc_metrics_module {
     const char *name;
@@ -68,7 +69,7 @@ int32_t proc_routine_init() {
     // check the enabled status for each module
     for (int32_t i = 0; __collector_proc.modules[i].name; i++) {
         //
-        snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_proc.%s",
+        snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_plugin_proc.%s",
                  __collector_proc.modules[i].name);
 
         __collector_proc.modules[i].enabled =
@@ -87,6 +88,7 @@ void *proc_routine_start(void *arg) {
         appconfig_get_int("collector_proc.rrd_update_every", 1);
 
     // 每次更新的时间间隔，单位微秒
+    // rrd_update_every单位秒
     usec_t step_microseconds = rrd_update_every * USEC_PER_SEC;
 
     struct heartbeat hb;

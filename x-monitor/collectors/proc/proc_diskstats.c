@@ -5,7 +5,7 @@
  * @Last Modified time: 2021-11-30 14:59:07 
  */
 
-#include "proc_disk.h"
+#include "proc_diskstats.h"
 #include "utils/strings.h"
 #include "utils/procfile.h"
 #include "utils/consts.h"
@@ -55,6 +55,7 @@ struct io_stats {
     times the number of milliseconds spent doing I/O since the last update of this field. 
     This can provide an easy measure of both I/O completion time and the backlog that may be accumulating.
     */
+    // The expected duration of the currently queued I/O operations
     uint64_t rq_ticks;
 };
 
