@@ -5,8 +5,8 @@
  * @Last Modified time: 2021-11-03 11:39:35
  */
 
-#include "daemon.h"
 #include "compiler.h"
+#include "daemon.h"
 #include "files.h"
 #include "log.h"
 
@@ -16,8 +16,7 @@ const int32_t process_nice_level = 19;
 const int32_t process_oom_score  = 1000;
 
 // 设置oom_socre_adj为-1000，表示禁止oom killer杀死该进程
-static void oom_score_adj(void)
-{
+static void oom_score_adj(void) {
     int64_t old_oom_score = 0;
     int32_t ret           = 0;
 
@@ -34,28 +33,24 @@ static void oom_score_adj(void)
 
     ret = write_int64_to_file("/proc/self/oom_score_adj", process_oom_score);
     if (unlikely(ret < 0)) {
-        error(
-            "failed to adjust Out-Of-Memory (OOM) score to %d. run with %ld, ret: %d",
-            process_oom_score, old_oom_score, ret);
+        error("failed to adjust Out-Of-Memory (OOM) score to %d. run with %ld, ret: %d", process_oom_score, old_oom_score, ret);
         return;
     }
 
-    info("adjust Out-Of-Memory (OOM) score from %ld to %d.", old_oom_score,
-         process_oom_score);
+    info("adjust Out-Of-Memory (OOM) score from %ld to %d.", old_oom_score, process_oom_score);
     return;
 }
 
-static inline void set_process_nice_level()
-{
+static inline void set_process_nice_level() {
     if (nice(process_nice_level) == -1) {
         error("Cannot set CPU nice level to %d.", process_nice_level);
-    } else {
+    }
+    else {
         debug("Set process nice level to %d.", process_nice_level);
     }
 }
 
-static void chown_open_file(int32_t fd, uid_t uid, gid_t gid)
-{
+static void chown_open_file(int32_t fd, uid_t uid, gid_t gid) {
     if (unlikely(fd == -1)) {
         return;
     }
@@ -74,8 +69,7 @@ static void chown_open_file(int32_t fd, uid_t uid, gid_t gid)
     return;
 }
 
-int32_t become_user(const char *user, int32_t pid_fd, const char *pid_file)
-{
+int32_t become_user(const char *user, int32_t pid_fd, const char *pid_file) {
     // 获取ruid
     int32_t is_root = ((getuid() == 0) ? 1 : 0);
 
@@ -89,45 +83,39 @@ int32_t become_user(const char *user, int32_t pid_fd, const char *pid_file)
     uid_t ruid = pw->pw_uid;
     gid_t rgid = pw->pw_gid;
 
-    if (pid_file[0] != '\0') {
+    if (pid_file[ 0 ] != '\0') {
         // 修改pid文件的所有者
         if (chown(pid_file, ruid, rgid) < 0) {
-            error("chown pid_file: %s to %u:%u failed.", pid_file,
-                  (uint32_t)ruid, (uint32_t)rgid);
+            error("chown pid_file: %s to %u:%u failed.", pid_file, ( uint32_t )ruid, ( uint32_t )rgid);
         }
     }
 
     chown_open_file(pid_fd, ruid, rgid);
 
     if (setgid(rgid) < 0) {
-        error("setgid failed, user: %s, ruid: %u, rgid: %u, error: %s", user,
-              (uint32_t)ruid, (uint32_t)rgid, strerror(errno));
+        error("setgid failed, user: %s, ruid: %u, rgid: %u, error: %s", user, ( uint32_t )ruid, ( uint32_t )rgid, strerror(errno));
         return -1;
     }
 
     if (setegid(rgid) < 0) {
-        error("setegid failed, user: %s, ruid: %u, rgid: %u, error: %s", user,
-              (uint32_t)ruid, (uint32_t)rgid, strerror(errno));
+        error("setegid failed, user: %s, ruid: %u, rgid: %u, error: %s", user, ( uint32_t )ruid, ( uint32_t )rgid, strerror(errno));
         return -1;
     }
 
     if (setuid(ruid) < 0) {
-        error("setuid failed, user: %s, ruid: %u, rgid: %u", user,
-              (uint32_t)ruid, (uint32_t)rgid);
+        error("setuid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t )ruid, ( uint32_t )rgid);
         return -1;
     }
 
     if (seteuid(ruid) < 0) {
-        error("seteuid failed, user: %s, ruid: %u, rgid: %u", user,
-              (uint32_t)ruid, (uint32_t)rgid);
+        error("seteuid failed, user: %s, ruid: %u, rgid: %u", user, ( uint32_t )ruid, ( uint32_t )rgid);
         return -1;
     }
 
     return 0;
 }
 
-int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user)
-{
+int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user) {
     if (!dont_fork) {
         int32_t i = fork();
         if (i == -1) {
@@ -164,15 +152,16 @@ int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user)
     // 生成pid文件
     int32_t pid_fd = -1;
 
-    if (pid_file != NULL && pid_file[0] != '\0') {
+    if (pid_file != NULL && pid_file[ 0 ] != '\0') {
         pid_fd = open(pid_file, O_RDWR | O_CREAT, 0644);
         if (pid_fd >= 0) {
-            char pid_str[32] = { 0 };
+            char pid_str[ 32 ] = { 0 };
             sprintf(pid_str, "%d", getpid());
             if (write(pid_fd, pid_str, strlen(pid_str)) <= 0) {
                 error("Cannot write pidfile '%s'.", pid_file);
             }
-        } else {
+        }
+        else {
             error("Cannot open pidfile '%s'.", pid_file);
         }
     }
@@ -190,7 +179,8 @@ int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user)
         if (become_user(user, pid_fd, pid_file) != 0) {
             error("Cannot become user '%s'.", user);
             exit(0 - errno);
-        } else {
+        }
+        else {
             info("Become user '%s' success.", user);
         }
     }
@@ -202,8 +192,7 @@ int32_t become_daemon(int32_t dont_fork, const char *pid_file, const char *user)
 }
 
 // kill_pid kills pid with SIGTERM.
-int32_t kill_pid(pid_t pid)
-{
+int32_t kill_pid(pid_t pid) {
     int32_t ret;
     debug("Request to kill pid %d", pid);
 
@@ -215,8 +204,7 @@ int32_t kill_pid(pid_t pid)
             // We wanted the process to exit so just let the caller handle.
             return ret;
         case EPERM:
-            error("Cannot kill pid %d, but I do not have enough permissions.",
-                  pid);
+            error("Cannot kill pid %d, but I do not have enough permissions.", pid);
             break;
         default:
             error("Cannot kill pid %d, but I received an error.", pid);

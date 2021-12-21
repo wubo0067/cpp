@@ -5,15 +5,13 @@
  * @Last Modified time: 2021-10-22 12:03:32
  */
 
-#include "files.h"
-#include "consts.h"
 #include "compiler.h"
+#include "consts.h"
+#include "files.h"
 #include "log.h"
 
 // 返回读取的字节数
-static int32_t read_file(const char *file_name, char *buffer,
-                         size_t buffer_size)
-{
+static int32_t read_file(const char *file_name, char *buffer, size_t buffer_size) {
     if (unlikely(0 == buffer_size)) {
         return -EINVAL;
     }
@@ -31,13 +29,12 @@ static int32_t read_file(const char *file_name, char *buffer,
         return -1;
     }
 
-    buffer[read_size] = '\0';
-    return (int32_t)read_size;
+    buffer[ read_size ] = '\0';
+    return ( int32_t )read_size;
 }
 
-int32_t read_file_to_int64(const char *file_name, int64_t *number)
-{
-    char number_buffer[NUMBER_BUFFER_SIZE + 1] = { 0 };
+int32_t read_file_to_int64(const char *file_name, int64_t *number) {
+    char number_buffer[ NUMBER_BUFFER_SIZE + 1 ] = { 0 };
 
     if (unlikely(NULL == file_name || NULL == number)) {
         return -EINVAL;
@@ -54,8 +51,7 @@ int32_t read_file_to_int64(const char *file_name, int64_t *number)
     return 0;
 }
 
-int32_t write_int64_to_file(const char *file_name, int64_t number)
-{
+int32_t write_int64_to_file(const char *file_name, int64_t number) {
     if (unlikely(NULL == file_name)) {
         return -EINVAL;
     }
@@ -64,16 +60,15 @@ int32_t write_int64_to_file(const char *file_name, int64_t number)
 
     int32_t fd = open(file_name, O_WRONLY, 0666);
     if (likely(-1 != fd)) {
-        char number_buffer[NUMBER_BUFFER_SIZE + 1] = { 0 };
+        char number_buffer[ NUMBER_BUFFER_SIZE + 1 ] = { 0 };
         snprintf(number_buffer, NUMBER_BUFFER_SIZE, "%ld", number);
         ret = write(fd, number_buffer, strlen(number_buffer));
         if (unlikely(-1 == ret)) {
-            error("write file %s failed, reason: %s", file_name,
-                  strerror(errno));
+            error("write file %s failed, reason: %s", file_name, strerror(errno));
             close(fd);
             return (0 - errno);
         }
         close(fd);
     }
-    return (int32_t)ret;
+    return ( int32_t )ret;
 }

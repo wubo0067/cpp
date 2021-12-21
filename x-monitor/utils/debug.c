@@ -1,6 +1,6 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-11-12 16:43:11 
+ * @Author: CALM.WU
+ * @Date: 2021-11-12 16:43:11
  * @Last Modified by: CALM.WU
  * @Last Modified time: 2021-11-12 16:47:15
  */
@@ -35,12 +35,11 @@ static const char *prefix = "-debug";
  *  @param  args the array of arguments passed to <tt>main</tt>
  */
 
-void debugInit(int *argc, const char *argv[])
-{
+void debugInit(int *argc, const char *argv[]) {
     debugFile = stderr;
 
     if (*argc > 1) {
-        const char *arg1 = argv[1];
+        const char *arg1 = argv[ 1 ];
         size_t      len  = strlen(prefix);
 
         if (strncmp(arg1, prefix, len) == 0) {
@@ -56,10 +55,10 @@ void debugInit(int *argc, const char *argv[])
             if (strlen(arg1) > len)
                 debugLevel = atoi(arg1 + len);
 
-            (*argc)--; // decrement number of arguments
+            (*argc)--;  // decrement number of arguments
 
-            for (int i = 1; i < *argc; i++) // remove first argument
-                argv[i] = argv[i + 1];
+            for (int i = 1; i < *argc; i++)  // remove first argument
+                argv[ i ] = argv[ i + 1 ];
         }
     }
 }
@@ -68,11 +67,10 @@ void debugInit(int *argc, const char *argv[])
  *  @param fileName name of file to send output to
  */
 
-void debugToFile(const char *fileName)
-{
+void debugToFile(const char *fileName) {
     debugClose();
 
-    FILE *f = fopen(fileName, "w"); // "w+" ?
+    FILE *f = fopen(fileName, "w");  // "w+" ?
 
     if (f)
         debugFile = f;
@@ -80,8 +78,7 @@ void debugToFile(const char *fileName)
 
 /** Close the output file if it was set in <tt>toFile()</tt> */
 
-void debugClose(void)
-{
+void debugClose(void) {
     if (debugFile && (debugFile != stderr)) {
         fclose(debugFile);
         debugFile = stderr;
