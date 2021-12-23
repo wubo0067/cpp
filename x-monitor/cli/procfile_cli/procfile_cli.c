@@ -1,13 +1,13 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-12-06 11:13:59 
+ * @Author: CALM.WU
+ * @Date: 2021-12-06 11:13:59
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-06 15:10:31
+ * @Last Modified time: 2021-12-23 16:52:50
  */
 
 #include "utils/common.h"
-#include "utils/procfile.h"
 #include "utils/log.h"
+#include "utils/procfile.h"
 #include "utils/strings.h"
 
 const char *seps = " \t:";
@@ -15,7 +15,7 @@ const char *seps = " \t:";
 int32_t main(int32_t argc, char **argv) {
     int32_t ret = 0;
 
-    char *   log_cfg = argv[1];
+    char *   log_cfg   = argv[1];
     char *   proc_file = argv[2];
     uint32_t loop_secs = str2uint32_t(argv[3]);
 
@@ -30,8 +30,7 @@ int32_t main(int32_t argc, char **argv) {
 
     fprintf(stderr, "open proc file: %s", proc_file);
 
-    struct proc_file *pf =
-        procfile_open(proc_file, seps, PROCFILE_FLAG_DEFAULT);
+    struct proc_file *pf = procfile_open(proc_file, seps, PROCFILE_FLAG_DEFAULT);
     if (pf == NULL) {
         fprintf(stderr, "open proc file failed\n");
         return -1;

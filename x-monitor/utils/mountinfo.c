@@ -2,13 +2,14 @@
  * @Author: CALM.WU
  * @Date: 2021-12-20 16:57:41
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-20 17:08:19
+ * @Last Modified time: 2021-12-23 11:30:44
  */
+
+#include "mountinfo.h"
 
 #include "common.h"
 #include "compiler.h"
 #include "log.h"
-#include "mountinfo.h"
 #include "procfile.h"
 #include "strings.h"
 
@@ -227,9 +228,9 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
         last     = mi;
         mi->next = NULL;
 
-        debug("MOUNTINFO: %d %d %u:%u root '%s', persistent id '%s', mount point '%s', mount options '%s', "
+        debug("MOUNTINFO: %d %d %u:%u root '%s', mount point '%s', mount options '%s', "
               "filesystem '%s', mount source '%s', super options '%s'%s%s%s%s%s%s\n",
-              mi->id, mi->parent_id, mi->major, mi->minor, mi->root, mi->persistent_id,
+              mi->id, mi->parent_id, mi->major, mi->minor, mi->root,  // mi->persistent_id,
               (mi->mount_point) ? mi->mount_point : "", (mi->mount_options) ? mi->mount_options : "",
               (mi->filesystem) ? mi->filesystem : "", (mi->mount_source) ? mi->mount_source : "",
               (mi->super_options) ? mi->super_options : "", (mi->flags & MOUNTINFO_FLAG_IS_DUMMY) ? " DUMMY" : "",
@@ -249,7 +250,7 @@ static void mountinfo_free(struct mountinfo *mi) {
     free(mi->root);
     free(mi->mount_point);
     free(mi->mount_options);
-    free(mi->persistent_id);
+    // free(mi->persistent_id);
 
     free(mi->filesystem);
     free(mi->mount_source);

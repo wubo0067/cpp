@@ -26,8 +26,8 @@ struct mountinfo {
     uint32_t major;  // major: major device number of device.
     uint32_t minor;  // minor: minor device number of device.
 
-    char *   persistent_id;  // a calculated persistent id for the mount point
-    uint32_t persistent_id_hash;
+    // char *   persistent_id;  // a calculated persistent id for the mount point
+    // uint32_t persistent_id_hash;
 
     // root: root of the mount within the filesystem.
     char *   root;

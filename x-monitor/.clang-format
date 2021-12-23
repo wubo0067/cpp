@@ -23,7 +23,7 @@ AllowShortBlocksOnASingleLine:	false
 # 允许短的case标签放在同一行
 AllowShortCaseLabelsOnASingleLine:	false
 # 允许短的函数放在同一行: None, InlineOnly(定义在类中), Empty(空函数), Inline(定义在类中，空函数), All
-AllowShortFunctionsOnASingleLine:	Empty
+AllowShortFunctionsOnASingleLine:	None
 # 允许短的if语句保持在同一行
 AllowShortIfStatementsOnASingleLine:	false
 # 允许短的循环保持在同一行
@@ -160,11 +160,11 @@ SpacesInAngles:	true
 # 在容器(ObjC和JavaScript的数组和字典等)字面量中添加空格
 SpacesInContainerLiterals:	true
 # 在C风格类型转换的括号中添加空格
-SpacesInCStyleCastParentheses:	true
+SpacesInCStyleCastParentheses:	false
 # 在圆括号的(后和)前添加空格
 SpacesInParentheses:	false
 # 在方括号的[后和]前添加空格，lamda表达式和未指明大小的数组的声明不受影响
-SpacesInSquareBrackets:	true
+SpacesInSquareBrackets:	false
 # 标准: Cpp03, Cpp11, Auto
 Standard:	Cpp11
 # tab宽度

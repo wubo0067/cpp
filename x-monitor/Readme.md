@@ -64,6 +64,20 @@
      bin/proto_statistics_cli ../collectors/ebpf/kernel/xmbpf_proto_statistics_kern.5.12.o eth0
      ```
 
+5. ##### simplepattern_test
+
+   - 编译
+
+     ```
+     make simplepattern_test VERBOSE=1
+     ```
+
+   - 运行
+
+     ```
+     bin/simplepattern_test ../cli/simplepattern_test/log.cfg
+     ```
+
      
 
 

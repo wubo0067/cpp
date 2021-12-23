@@ -75,6 +75,7 @@ add_subdirectory(cli/cachestat_cli)
 add_subdirectory(cli/perf_event_stack_cli)
 add_subdirectory(cli/procfile_cli)
 add_subdirectory(cli/proto_statistics_cli)
+add_subdirectory(cli/simplepattern_test)
 
 # 子目录源代码
 set(PLUGINSD_FILES

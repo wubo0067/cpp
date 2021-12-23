@@ -1,8 +1,8 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-11-29 11:35:19 
+ * @Author: CALM.WU
+ * @Date: 2021-11-29 11:35:19
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-29 15:13:27
+ * @Last Modified time: 2021-12-23 16:37:49
  */
 
 #include "utils/common.h"
@@ -12,12 +12,11 @@
 #include <bpf/btf.h>
 #include <bpf/libbpf.h>
 
-int32_t main(int32_t argc, char **argv)
-{
+int32_t main(int32_t argc, char **argv) {
     int32_t                 ret         = 0;
-    struct btf             *vmlinux_btf = NULL;
-    const struct btf_type  *t, *func_proto;
-    const char             *func_name, *st_name;
+    struct btf *            vmlinux_btf = NULL;
+    const struct btf_type * t, *func_proto;
+    const char *            func_name, *st_name;
     const struct btf_param *params;
     uint16_t                params_count = 0;
 
@@ -53,12 +52,14 @@ int32_t main(int32_t argc, char **argv)
                 st_name = btf__str_by_offset(vmlinux_btf, t->name_off);
                 debug("\tparam[%d] --- %s", pi, st_name);
                 continue;
-            } else {
+            }
+            else {
                 t = btf__type_by_id(vmlinux_btf, t->type);
-                if(btf_is_struct(t)) {
+                if (btf_is_struct(t)) {
                     st_name = btf__str_by_offset(vmlinux_btf, t->name_off);
                     debug("\tparam[%d] +++ %s", pi, st_name);
-                } else {
+                }
+                else {
                     debug("\tparam[%d] *** %s", pi, "unknown");
                 }
             }
