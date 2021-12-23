@@ -78,6 +78,12 @@
      bin/simplepattern_test ../cli/simplepattern_test/log.cfg
      ```
 
+   - 检查是否有内存泄露
+
+     ```
+     valgrind --tool=memcheck --leak-check=full bin/simplepattern_test ../cli/simplepattern_test/log.cfg
+     ```
+
      
 
 
