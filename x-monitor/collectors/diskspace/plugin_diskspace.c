@@ -15,8 +15,12 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 #include "utils/mountinfo.h"
+#include "utils/simple_pattern.h"
 
 #include "appconfig/appconfig.h"
+
+#define DEFAULT_EXCLUDED_PATHS "/proc/* /sys/* /var/run/user/* /run/user/* /snap/* /var/lib/docker/*"
+#define DEFAULT_EXCLUDED_FILESYSTEMS "*gvfs *gluster* *s3fs *ipfs *davfs2 *httpfs *sshfs *gdfs *moosefs fusectl autofs"
 
 static const char *__name        = "PLUGIN_DISKSPACE";
 static const char *__config_name = "collector_plugin_diskspace";
@@ -40,7 +44,7 @@ static struct collector_diskspace __collector_diskspace = {
 __attribute__((constructor)) static void collector_diskspace_register_routine() {
     fprintf(stderr, "---register_collector_diskspace_register_routine---\n");
     struct xmonitor_static_routine *xsr =
-        ( struct xmonitor_static_routine * )calloc(1, sizeof(struct xmonitor_static_routine));
+        (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name          = __name;
     xsr->config_name   = __config_name;  //配置文件中节点名
     xsr->enabled       = 0;
@@ -63,7 +67,51 @@ static void __reload_mountinfo(int32_t force) {
     }
 }
 
-static void __collector_diskspace_stats(struct mountinfo *mi, int32_t update_every) {}
+static void __collector_diskspace_stats(struct mountinfo *mi, int32_t update_every) {
+    static SIMPLE_PATTERN *excluded_mountpoints = NULL;
+    static SIMPLE_PATTERN *excluded_filesystems = NULL;
+
+    excluded_mountpoints =
+        appconfig_get_str("collector_plugin_diskspace", "exclude_mountpoints", DEFAULT_EXCLUDED_PATHS);
+    excluded_filesystems =
+        appconfig_get_str("collector_plugin_diskspace", "exclude_filesystems", DEFAULT_EXCLUDED_FILESYSTEMS);
+
+    if (unlikely(simple_pattern_match(excluded_mountpoints, mi->mount_point))) {
+        return;
+    }
+
+    if (unlikely(simple_pattern_match(excluded_filesystems, mi->filesystem))) {
+        return;
+    }
+
+    struct statvfs vfs;
+    if (statvfs(mi->mount_point, &vfs) < 0) {
+        error("DISKSPACE: failed to statvfs() mount point '%s' (disk '%s', filesystem '%s', root '%s')",
+              mi->mount_point, mi->mount_source, mi->filesystem ? mi->filesystem : "", mi->root ? mi->root : "");
+        return;
+    }
+
+    // 基本文件系统块大小，磁盘的块大小是扇区
+    fsblkcnt_t block_size = (vfs.f_frsize) ? vfs.f_frsize : vfs.f_bsize;
+    // Size of fs in f_frsize units 文件系统数据块总数
+    fsblkcnt_t block_total = vfs.f_blocks;
+    // Number of free blocks 可用块数, root用户可用的数据块数
+    fsblkcnt_t block_free = vfs.f_bfree;
+    // 非超级用户可获取的块数 free blocks for unprivileged users
+    fsblkcnt_t block_avail = vfs.f_bavail;
+    // root用户保留块
+    fsblkcnt_t block_reserve_root = block_free - block_avail;
+
+    // inode数量
+    fsblkcnt_t inode_total = vfs.f_files;
+    // Number of free inodes
+    fsblkcnt_t inode_free = vfs.f_ffree;
+    // Number of free inodes for unprivileged users The number of file serial numbers available to non-privileged
+    // process.
+    fsblkcnt_t inode_avail        = vfs.f_favail;
+    fsblkcnt_t inode_reserve_root = inode_free - inode_avail;
+    fsblkcnt_t inode_used         = inode_total - inode_free;
+}
 
 int32_t diskspace_routine_init() {
     debug("[%s] routine init successed", __name);
@@ -95,6 +143,7 @@ void *diskspace_routine_start(void *arg) {
         }
 
         // 读取/proc/self/mountinfo，获取挂载文件系统信息
+        // update by check_for_new_mountpoints_every
         __reload_mountinfo(0);
 
         //--------------------------------------------------------------------------------

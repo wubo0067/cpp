@@ -43,6 +43,8 @@ int32_t main(int32_t argc, char **argv) {
     test_match("!c*", "csdfoobar");
     // mismatch
     test_match("!*c*", "sdsdcsdfoobar");
+    // match
+    test_match("/proc/* /sys/* /var/run/user/* /run/user/* /snap/* /var/lib/docker/*", "/sys/fs/cgroup/");
 
     log_fini();
 
