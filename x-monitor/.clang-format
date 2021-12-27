@@ -60,9 +60,9 @@ BraceWrapping:
   # union定义后面
   AfterUnion:	false
   # catch之前
-  BeforeCatch:	true
+  BeforeCatch:	false
   # else之前
-  BeforeElse:	true
+  BeforeElse:	false
   # 缩进大括号
   IndentBraces:	false
 # 在二元运算符前换行: None(在操作符后换行), NonAssignment(在非赋值的操作符前换行), All(在操作符前换行)
@@ -73,11 +73,11 @@ BreakBeforeBinaryOperators:	NonAssignment
 #   注：这里认为语句块也属于函数
 BreakBeforeBraces:	Custom
 # 在三元运算符前换行
-BreakBeforeTernaryOperators:	true
+BreakBeforeTernaryOperators:	false
 # 在构造函数的初始化列表的逗号前换行
 BreakConstructorInitializersBeforeComma:	false
 # 每行字符的限制，0表示没有限制
-ColumnLimit:	120
+ColumnLimit:	100
 # 描述具有特殊意义的注释的正则表达式，它不应该被分割为多行或以其它方式改变
 CommentPragmas:	'^ IWYU pragma:'
 # 构造函数的初始化列表要么都在同一行，要么都各自一行

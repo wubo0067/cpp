@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <sys/stat.h>
 
 #define MOUNTINFO_FLAG_IS_DUMMY 0x00000001
 #define MOUNTINFO_FLAG_IS_REMOTE 0x00000002
@@ -26,7 +27,7 @@ struct mountinfo {
     uint32_t major;  // major: major device number of device.
     uint32_t minor;  // minor: minor device number of device.
 
-    // char *   persistent_id;  // a calculated persistent id for the mount point
+    // char *   persistent_id; // a calculated persistent id for the mount point
     // uint32_t persistent_id_hash;
 
     // root: root of the mount within the filesystem.
@@ -61,4 +62,5 @@ struct mountinfo {
 };
 
 extern struct mountinfo *mountinfo_read(int do_statvfs);
-extern void              mountinfo_free_all(struct mountinfo *mi);
+
+extern void mountinfo_free_all(struct mountinfo *mi);

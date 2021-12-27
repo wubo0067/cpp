@@ -89,10 +89,12 @@ set(APPCONFIG_FILES
         )
 
 set(PROC_PLUGIN_FILES
-        collectors/proc/proc.h
-        collectors/proc/proc.c
-        collectors/proc/proc_disk.h
-        collectors/proc/proc_disk.c
+        collectors/proc/plugin_proc.h
+        collectors/proc/plugin_proc.c
+        collectors/proc/proc_diskstats.h
+        collectors/proc/proc_diskstats.c
+        collectors/diskspace/plugin_diskspace.c
+        collectors/diskspace/plugin_diskspace.h
         )        
 
 # 编译的执行程序

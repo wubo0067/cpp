@@ -6,7 +6,7 @@
  */
 
 #include "plugin_proc.h"
-#include "proc_disk.h"
+#include "proc_diskstats.h"
 
 #include "routine.h"
 #include "utils/clocks.h"
@@ -49,7 +49,7 @@ static struct collector_proc __collector_proc = { .exit_flag = 0,
 __attribute__((constructor)) static void collector_proc_register_routine() {
     fprintf(stderr, "---register_collector_proc_routine---\n");
     struct xmonitor_static_routine *xsr =
-        ( struct xmonitor_static_routine * )calloc(1, sizeof(struct xmonitor_static_routine));
+        (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name          = __name;
     xsr->config_name   = __config_name;  //配置文件中节点名
     xsr->enabled       = 0;
@@ -62,16 +62,16 @@ __attribute__((constructor)) static void collector_proc_register_routine() {
 
 int32_t proc_routine_init() {
     debug("[%s] routine init successed", __name);
-    char proc_module_cfgname[ CONFIG_NAME_MAX + 1 ];
+    char proc_module_cfgname[CONFIG_NAME_MAX + 1];
 
     // check the enabled status for each module
-    for (int32_t i = 0; __collector_proc.modules[ i ].name; i++) {
+    for (int32_t i = 0; __collector_proc.modules[i].name; i++) {
         //
-        snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_plugin_proc.%s", __collector_proc.modules[ i ].name);
+        snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_plugin_proc.%s", __collector_proc.modules[i].name);
 
-        __collector_proc.modules[ i ].enabled = appconfig_get_member_bool(proc_module_cfgname, "enable", 1);
-        debug("[%s] module %s is %s", __name, __collector_proc.modules[ i ].name,
-              __collector_proc.modules[ i ].enabled ? "enabled" : "disabled");
+        __collector_proc.modules[i].enabled = appconfig_get_member_bool(proc_module_cfgname, "enable", 1);
+        debug("[%s] module %s is %s", __name, __collector_proc.modules[i].name,
+              __collector_proc.modules[i].enabled ? "enabled" : "disabled");
     }
     return 0;
 }
@@ -96,8 +96,8 @@ void *proc_routine_start(void *arg) {
             break;
         }
 
-        for (index = 0; __collector_proc.modules[ index ].name; index++) {
-            struct proc_metrics_module *pmm = &__collector_proc.modules[ index ];
+        for (index = 0; __collector_proc.modules[index].name; index++) {
+            struct proc_metrics_module *pmm = &__collector_proc.modules[index];
             if (unlikely(!pmm->enabled)) {
                 continue;
             }

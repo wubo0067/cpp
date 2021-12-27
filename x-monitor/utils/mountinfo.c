@@ -22,7 +22,7 @@ static const char *__mountinfo_file = "/proc/self/mountinfo";
    or Fs_name is equal to "-hosts" (used by autofs to mount remote fs).  */
 #define ME_REMOTE(Fs_name, Fs_type)                                          \
     (strchr(Fs_name, ':') != NULL                                            \
-     || ((Fs_name)[ 0 ] == '/' && (Fs_name)[ 1 ] == '/'                      \
+     || ((Fs_name)[0] == '/' && (Fs_name)[1] == '/'                          \
          && (strcmp(Fs_type, "smbfs") == 0 || strcmp(Fs_type, "cifs") == 0)) \
      || (strcmp("-hosts", Fs_name) == 0))
 #endif
@@ -59,7 +59,7 @@ static int32_t is_readonly(const char *mount_options) {
     }
     if (!strncmp(mount_options, "ro,", 3))
         return 1;
-    if (!strncmp(&mount_options[ len - 3 ], ",ro", 3))
+    if (!strncmp(&mount_options[len - 3], ",ro", 3))
         return 1;
     if (strstr(mount_options, ",ro,"))
         return 1;
@@ -75,7 +75,7 @@ static char *strdup_decoding_octal(const char *string) {
     while (*s) {
         if (unlikely(*s == '\\')) {
             s++;
-            if (likely(isdigit(*s) && isdigit(s[ 1 ]) && isdigit(s[ 2 ]))) {
+            if (likely(isdigit(*s) && isdigit(s[1]) && isdigit(s[2]))) {
                 char c = *s++ - '0';
                 c <<= 3;
                 c |= *s++ - '0';
@@ -117,7 +117,7 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
         }
 
         // 每一行都是一个mountinfo结构，文件系统
-        mi = ( struct mountinfo * )calloc(1, sizeof(struct mountinfo));
+        mi = (struct mountinfo *)calloc(1, sizeof(struct mountinfo));
 
         // word的序号从0开始
         uint32_t w = 0;
@@ -243,7 +243,7 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
 
     procfile_close(pf);
     pf = NULL;
-    return NULL;
+    return root;
 }
 
 static void mountinfo_free(struct mountinfo *mi) {

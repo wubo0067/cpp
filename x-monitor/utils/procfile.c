@@ -1,14 +1,14 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-12-02 10:34:06 
+ * @Author: CALM.WU
+ * @Date: 2021-12-02 10:34:06
  * @Last Modified by: CALM.WU
  * @Last Modified time: 2021-12-20 17:08:10
  */
 
-#include "procfile.h"
 #include "common.h"
 #include "compiler.h"
 #include "log.h"
+#include "procfile.h"
 
 #define PROCFILE_DATA_BUFFER_SIZE 512
 #define PFLINES_INCREASE_STEP 10
@@ -41,9 +41,9 @@ char *procfile_filename(struct proc_file *ff) {
 // lines
 static inline struct pf_lines *__new_pflines() {
     struct pf_lines *pfls = (struct pf_lines *)malloc(
-        sizeof(struct pf_lines) +
-        PFLINES_INCREASE_STEP * sizeof(struct pf_line));
-    pfls->len = 0;
+        sizeof(struct pf_lines)
+        + PFLINES_INCREASE_STEP * sizeof(struct pf_line));
+    pfls->len  = 0;
     pfls->size = PFLINES_INCREASE_STEP;
     return pfls;
 }
@@ -64,9 +64,9 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
     if (unlikely(lines->len == lines->size)) {
         // realloc返回的地址可能与原地址不同，所以需要重新赋值
         ff->lines = (struct pf_lines *)realloc(
-            lines,
-            sizeof(struct pf_lines) +
-                (lines->size + PFLINES_INCREASE_STEP) * sizeof(struct pf_line));
+            lines, sizeof(struct pf_lines)
+                       + (lines->size + PFLINES_INCREASE_STEP)
+                             * sizeof(struct pf_line));
         lines = ff->lines;
         // 行容量扩容
         lines->size += PFLINES_INCREASE_STEP;
@@ -74,10 +74,10 @@ static inline size_t *__add_pfline(struct proc_file *ff) {
 
     // 使用一个新行
     struct pf_line *line = &(lines->lines[lines->len]);
-    line->words = 0;
-    line->first = ff->words->len;
+    line->words          = 0;
+    line->first          = ff->words->len;
 
-    //debug("adding line %lu at word %lu", lines->len, line->first);
+    // debug("adding line %lu at word %lu", lines->len, line->first);
 
     lines->len++;
     return &line->words;
@@ -90,7 +90,7 @@ static inline struct pf_words *__new_pfwords() {
     // 整个内容的word数组
     struct pf_words *pfw = (struct pf_words *)malloc(
         sizeof(struct pf_words) + PFWORDS_INCREASE_STEP * sizeof(char *));
-    pfw->len = 0;
+    pfw->len  = 0;
     pfw->size = PFWORDS_INCREASE_STEP;
     return pfw;
 }
@@ -108,8 +108,8 @@ static void __add_pfword(struct proc_file *ff, char *word) {
     struct pf_words *pfws = ff->words;
     if (unlikely(pfws->len == pfws->size)) {
         ff->words = (struct pf_words *)realloc(
-            pfws, sizeof(struct pf_words) +
-                      (pfws->size + PFWORDS_INCREASE_STEP) * sizeof(char *));
+            pfws, sizeof(struct pf_words)
+                      + (pfws->size + PFWORDS_INCREASE_STEP) * sizeof(char *));
         pfws = ff->words;
         pfws->size += PFWORDS_INCREASE_STEP;
     }
@@ -121,14 +121,14 @@ static void __add_pfword(struct proc_file *ff, char *word) {
 // file
 
 static void __procfile_parser(struct proc_file *ff) {
-    char *s = ff->data;           // 内容起始地址
-    char *e = &ff->data[ff->len]; // 内容结束地址
-    char *t = ff->data;           // 当前word的首字符地址
+    char *s = ff->data;            // 内容起始地址
+    char *e = &ff->data[ff->len];  // 内容结束地址
+    char *t = ff->data;            // 当前word的首字符地址
 
     enum procfile_separator_type *seps = ff->separators;
 
-    char   quote = 0;  // the quote character - only when in quoted string
-    size_t opened = 0; // counts the number of open parenthesis
+    char   quote  = 0;  // the quote character - only when in quoted string
+    size_t opened = 0;  // counts the number of open parenthesis
 
     // 添加第一行，返回行的word地址
     size_t *line_words = __add_pfline(ff);
@@ -148,7 +148,6 @@ static void __procfile_parser(struct proc_file *ff) {
                     // 行的word数量+1
                     (*line_words)++;
                     t = ++s;
-
                 } else {
                     // 第一个字符是分隔符，跳过
                     t = ++s;
@@ -208,8 +207,8 @@ static void __procfile_parser(struct proc_file *ff) {
             } else
                 s++;
         } else {
-            fatal(
-                "Internal Error: procfile_readall() does not handle all the cases.");
+            fatal("Internal Error: procfile_readall() does not handle all the "
+                  "cases.");
         }
     }
 
@@ -252,7 +251,7 @@ static void __procfile_set_separators(struct proc_file *ff, const char *seps) {
     if (unlikely(!seps))
         seps = " \t=|";
 
-    ffs = ff->separators;
+    ffs           = ff->separators;
     const char *s = seps;
     while (*s) {
         ffs[(int)*s++] = PF_CHAR_IS_SEPARATOR;
@@ -260,21 +259,22 @@ static void __procfile_set_separators(struct proc_file *ff, const char *seps) {
 }
 
 struct proc_file *procfile_readall(struct proc_file *ff) {
-    ff->len = 0;
+    ff->len   = 0;
     ssize_t r = 1;
 
     while (r > 0) {
-        ssize_t s = ff->len;      // 使用空间
-        ssize_t x = ff->size - s; // 剩余空间
+        ssize_t s = ff->len;       // 使用空间
+        ssize_t x = ff->size - s;  // 剩余空间
 
         if (unlikely(!x)) {
             // 空间不够，扩展
-            debug("procfile %s buffer size not enough, expand to %lu",
-                  procfile_filename(ff), ff->size + PROCFILE_DATA_BUFFER_SIZE);
+            // debug("procfile %s buffer size not enough, expand to %lu",
+            //       procfile_filename(ff), ff->size +
+            //       PROCFILE_DATA_BUFFER_SIZE);
             // 再增加一个PROCFILE_DATA_BUFFER_SIZE
-            ff = (struct proc_file *)realloc(ff, sizeof(struct proc_file) +
-                                                     ff->size +
-                                                     PROCFILE_DATA_BUFFER_SIZE);
+            ff = (struct proc_file *)realloc(ff,
+                                             sizeof(struct proc_file) + ff->size
+                                                 + PROCFILE_DATA_BUFFER_SIZE);
             ff->size += PROCFILE_DATA_BUFFER_SIZE;
         }
 
@@ -290,7 +290,7 @@ struct proc_file *procfile_readall(struct proc_file *ff) {
         ff->len += r;
     }
 
-    debug("rewind file '%s'", procfile_filename(ff));
+    // debug("rewind file '%s'", procfile_filename(ff));
     lseek(ff->fd, 0, SEEK_SET);
 
     __reset_pfilines(ff->lines);
@@ -317,10 +317,10 @@ struct proc_file *procfile_open(const char *filename, const char *separators,
     struct proc_file *ff = (struct proc_file *)malloc(
         sizeof(struct proc_file) + PROCFILE_DATA_BUFFER_SIZE);
     strncpy(ff->filename, filename, FILENAME_MAX);
-    //ff->filename[0] = '\0';
-    ff->fd = fd;
-    ff->size = PROCFILE_DATA_BUFFER_SIZE;
-    ff->len = 0;
+    // ff->filename[0] = '\0';
+    ff->fd    = fd;
+    ff->size  = PROCFILE_DATA_BUFFER_SIZE;
+    ff->len   = 0;
     ff->flags = flags;
     ff->lines = __new_pflines();
     ff->words = __new_pfwords();
@@ -377,8 +377,8 @@ void procfile_set_open_close(struct proc_file *ff, const char *open,
     // remove all open/close
     int32_t index = 256;
     while (index--) {
-        if (unlikely(seps[index] == PF_CHAR_IS_OPEN ||
-                     seps[index] == PF_CHAR_IS_CLOSE))
+        if (unlikely(seps[index] == PF_CHAR_IS_OPEN
+                     || seps[index] == PF_CHAR_IS_CLOSE))
             seps[index] = PF_CHAR_IS_WORD;
     }
 
@@ -400,7 +400,7 @@ void procfile_set_open_close(struct proc_file *ff, const char *open,
 
 void procfile_print(struct proc_file *ff) {
     size_t lines = procfile_lines(ff), l;
-    char * s = NULL;
+    char * s     = NULL;
 
     debug("procfile '%s' has %lu lines and %lu words", procfile_filename(ff),
           lines, ff->words->len);
@@ -409,7 +409,8 @@ void procfile_print(struct proc_file *ff) {
         size_t words = procfile_linewords(ff, l);
 
         debug("line %lu starts at word %lu and has %lu words", l,
-              ff->lines->lines[l].first, words); //ff->lines->lines[l].words);
+              ff->lines->lines[l].first,
+              words);  // ff->lines->lines[l].words);
 
         size_t w;
         for (w = 0; w < words; w++) {
