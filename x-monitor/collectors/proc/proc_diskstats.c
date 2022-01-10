@@ -1,19 +1,22 @@
 /*
  * @Author: CALM.WU
  * @Date: 2021-11-30 14:59:07
- * @Last Modified by:   CALM.WU
- * @Last Modified time: 2021-11-30 14:59:07
+ * @Last Modified by: CALM.WU
+ * @Last Modified time: 2022-01-10 17:08:48
  */
 
-#include "proc_diskstats.h"
+#include "plugin_proc.h"
+
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
 #include "utils/procfile.h"
 #include "utils/strings.h"
 
-static const char *      __proc_disk_filename = "/proc/diskstats";
-static struct proc_file *__pf_diskstats       = NULL;
+#include "appconfig/appconfig.h"
+
+static const char *      __proc_diskstat_filename = "/proc/diskstats";
+static struct proc_file *__pf_diskstats           = NULL;
 
 struct io_stats {
     /* 读取的扇区数量 */
@@ -55,7 +58,8 @@ struct io_stats {
     number of milliseconds spent doing I/Os. This field is incremented at each I/O start,
     I/O completion, I/O merge, or read of these stats by the number of I/Os in progress (field 9)
     times the number of milliseconds spent doing I/O since the last update of this field.
-    This can provide an easy measure of both I/O completion time and the backlog that may be accumulating.
+    This can provide an easy measure of both I/O completion time and the backlog that may be
+    accumulating.
     */
     // The expected duration of the currently queued I/O operations
     uint64_t rq_ticks;
@@ -90,13 +94,11 @@ static enum disk_type __get_device_type(const char *dev_name, uint32_t major, ui
     if (likely(access(buffer, R_OK) == 0)) {
         // assign it here, but it will be overwritten if it is not a physical disk
         dt = DISK_TYPE_PHYSICAL;
-    }
-    else {
+    } else {
         snprintf(buffer, MAX_NAME_LEN, "/sys/dev/block/%u:%u/partition", major, minor);
         if (likely(access(buffer, R_OK) == 0)) {
             dt = DISK_TYPE_PARTITION;
-        }
-        else {
+        } else {
             snprintf(buffer, FILENAME_MAX, "/sys/dev/block/%u:%u/slaves", major, minor);
             DIR *dirp = opendir(buffer);
             if (likely(dirp != NULL)) {
@@ -147,8 +149,7 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
 
     if (unlikely(!__iodev_list)) {
         __iodev_list = dev;
-    }
-    else {
+    } else {
         // 添加在末尾
         struct io_device *last;
         for (last = __iodev_list; last->next != NULL; last = last->next)
@@ -159,13 +160,14 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
     return dev;
 }
 
-int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
+int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const char *config_path) {
+    const char *f_diskstat =
+        appconfig_get_member_str(config_path, "monitor_file", __proc_diskstat_filename);
+
+    __pf_diskstats = procfile_open(f_diskstat, " \t", PROCFILE_FLAG_DEFAULT);
     if (unlikely(!__pf_diskstats)) {
-        __pf_diskstats = procfile_open(__proc_disk_filename, " \t", PROCFILE_FLAG_DEFAULT);
-        if (unlikely(!__pf_diskstats)) {
-            error("Cannot open /proc/diskstats");
-            return -1;
-        }
+        error("Cannot open /proc/diskstats");
+        return -1;
     }
 
     __pf_diskstats = procfile_readall(__pf_diskstats);
@@ -223,13 +225,15 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
         }
 
         // debug(
-        //     "\ndiskstats[%d:%d]: %s rd_ios=%lu, rd_merges=%lu, rd_sectors=%lu, rd_ticks=%lu, wr_ios=%lu,
-        //     wr_merges=%lu, wr_sectors=%lu, wr_ticks=%lu, ios_pgr=%lu, tot_ticks=%lu, rq_ticks=%lu, dc_ios=%lu,
-        //     dc_merges=%lu, dc_sectors=%lu, dc_ticks=%lu", dev->major, dev->minor, dev->device_name,
-        //     curr_devstats->rd_ios, curr_devstats->rd_merges, curr_devstats->rd_sectors, curr_devstats->rd_ticks,
-        //     curr_devstats->wr_ios, curr_devstats->wr_merges, curr_devstats->wr_sectors, curr_devstats->wr_ticks,
-        //     curr_devstats->ios_pgr, curr_devstats->tot_ticks, curr_devstats->rq_ticks, curr_devstats->dc_ios,
-        //     curr_devstats->dc_merges, curr_devstats->dc_sectors, curr_devstats->dc_ticks);
+        //     "\ndiskstats[%d:%d]: %s rd_ios=%lu, rd_merges=%lu, rd_sectors=%lu, rd_ticks=%lu,
+        //     wr_ios=%lu, wr_merges=%lu, wr_sectors=%lu, wr_ticks=%lu, ios_pgr=%lu, tot_ticks=%lu,
+        //     rq_ticks=%lu, dc_ios=%lu, dc_merges=%lu, dc_sectors=%lu, dc_ticks=%lu", dev->major,
+        //     dev->minor, dev->device_name, curr_devstats->rd_ios, curr_devstats->rd_merges,
+        //     curr_devstats->rd_sectors, curr_devstats->rd_ticks, curr_devstats->wr_ios,
+        //     curr_devstats->wr_merges, curr_devstats->wr_sectors, curr_devstats->wr_ticks,
+        //     curr_devstats->ios_pgr, curr_devstats->tot_ticks, curr_devstats->rq_ticks,
+        //     curr_devstats->dc_ios, curr_devstats->dc_merges, curr_devstats->dc_sectors,
+        //     curr_devstats->dc_ticks);
 
         if (unlikely(0 == dev->curr_stats_id && 0 == dev->prev_stats_id)) {
             dev->curr_stats_id = (dev->curr_stats_id + 1) % 2;
@@ -253,14 +257,18 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
         double rw_ios_per_sec = ((double)(curr_devstats->wr_ios - prev_devstats->wr_ios)) / dt_sec;
 
         // 每秒读取字节数
-        double rd_kb_per_sec = ((double)(curr_devstats->rd_sectors - prev_devstats->rd_sectors)) / 2.0 / dt_sec;
+        double rd_kb_per_sec =
+            ((double)(curr_devstats->rd_sectors - prev_devstats->rd_sectors)) / 2.0 / dt_sec;
         // 每秒写入字节数
-        double wr_kb_per_sec = ((double)(curr_devstats->wr_sectors - prev_devstats->wr_sectors)) / 2.0 / dt_sec;
+        double wr_kb_per_sec =
+            ((double)(curr_devstats->wr_sectors - prev_devstats->wr_sectors)) / 2.0 / dt_sec;
 
         // 每秒合并读次数 rrqm/s
-        double rd_merges_per_sec = ((double)(curr_devstats->rd_merges - prev_devstats->rd_merges)) / dt_sec;
+        double rd_merges_per_sec =
+            ((double)(curr_devstats->rd_merges - prev_devstats->rd_merges)) / dt_sec;
         // 每秒合并写次数 wrqm/s
-        double wr_merges_per_sec = ((double)(curr_devstats->wr_merges - prev_devstats->wr_merges)) / dt_sec;
+        double wr_merges_per_sec =
+            ((double)(curr_devstats->wr_merges - prev_devstats->wr_merges)) / dt_sec;
 
         // 每个读操作的耗时（毫秒）
         double r_await = (curr_devstats->rd_ios - prev_devstats->rd_ios) ?
@@ -274,28 +282,34 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
                                  / ((double)(curr_devstats->wr_ios - prev_devstats->wr_ios)) :
                              0.0;
 
-        uint64_t curr_nr_ios = curr_devstats->rd_ios + curr_devstats->wr_ios + curr_devstats->dc_ios;
-        uint64_t prev_nr_ios = prev_devstats->rd_ios + prev_devstats->wr_ios + prev_devstats->dc_ios;
+        uint64_t curr_nr_ios =
+            curr_devstats->rd_ios + curr_devstats->wr_ios + curr_devstats->dc_ios;
+        uint64_t prev_nr_ios =
+            prev_devstats->rd_ios + prev_devstats->wr_ios + prev_devstats->dc_ios;
         // io次数除以时间（毫秒）
-        double await = (curr_nr_ios - prev_nr_ios) ? ((curr_devstats->rd_ticks - prev_devstats->rd_ticks)
-                                                      + (curr_devstats->wr_ticks - prev_devstats->wr_ticks)
-                                                      + (curr_devstats->dc_ticks - prev_devstats->dc_ticks))
-                                                         / ((double)(curr_nr_ios - prev_nr_ios)) :
-                                                     0.0;
+        double await = (curr_nr_ios - prev_nr_ios) ?
+                           ((curr_devstats->rd_ticks - prev_devstats->rd_ticks)
+                            + (curr_devstats->wr_ticks - prev_devstats->wr_ticks)
+                            + (curr_devstats->dc_ticks - prev_devstats->dc_ticks))
+                               / ((double)(curr_nr_ios - prev_nr_ios)) :
+                           0.0;
 
         // 平均未完成的I/O请求数量，时间单位秒，time_in_queue，time_in_queue是用当前的I/O数量（即字段#9
         // in-flight）乘以自然时间
-        double aqu_sz = ((double)(curr_devstats->rq_ticks - prev_devstats->rq_ticks)) / dt_sec / 1000.0;
+        double aqu_sz =
+            ((double)(curr_devstats->rq_ticks - prev_devstats->rq_ticks)) / dt_sec / 1000.0;
 
         // 该硬盘设备的繁忙比率
-        double utils = ((double)(curr_devstats->tot_ticks - prev_devstats->tot_ticks)) / dt_sec / 10.0;
+        double utils =
+            ((double)(curr_devstats->tot_ticks - prev_devstats->tot_ticks)) / dt_sec / 10.0;
         ;
 
         // 每个I/O的平均扇区数
-        double arq_sz = (curr_nr_ios - prev_nr_ios) ? ((curr_devstats->rd_sectors - prev_devstats->rd_sectors)
-                                                       + (curr_devstats->wr_sectors - prev_devstats->wr_sectors))
-                                                          / ((double)(curr_nr_ios - prev_nr_ios)) / 2.0 :
-                                                      0.0;
+        double arq_sz = (curr_nr_ios - prev_nr_ios) ?
+                            ((curr_devstats->rd_sectors - prev_devstats->rd_sectors)
+                             + (curr_devstats->wr_sectors - prev_devstats->wr_sectors))
+                                / ((double)(curr_nr_ios - prev_nr_ios)) / 2.0 :
+                            0.0;
         // /* rareq-sz (still in sectors, not kB) */
         double rarq_sz = (curr_devstats->rd_ios - prev_devstats->rd_ios) ?
                              (curr_devstats->rd_sectors - prev_devstats->rd_sectors)
@@ -311,23 +325,28 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt) {
             system_read_kb += curr_devstats->rd_sectors / 2;
             system_write_kb += curr_devstats->wr_sectors / 2;
 
-            debug("\n\tdisk[%d:%d]:'%s' system_read_kb=%ld(Kb ), system_write_kb=%ld(Kb), rd_ios_per_sec=%.2f(r/s), "
+            debug("\n\tdisk[%d:%d]:'%s' system_read_kb=%ld(Kb ), system_write_kb=%ld(Kb), "
+                  "rd_ios_per_sec=%.2f(r/s), "
                   "rw_ios_per_sec=%.2f(w/s), "
-                  "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), rd_merges_per_sec=%.2f(rrqm/s), "
-                  "wr_merges_per_sec=%.2f(wrqm/s), r_await=%.2f(ms), w_await=%.2f(ms), await=%.2f(ms), "
+                  "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), "
+                  "rd_merges_per_sec=%.2f(rrqm/s), "
+                  "wr_merges_per_sec=%.2f(wrqm/s), r_await=%.2f(ms), w_await=%.2f(ms), "
+                  "await=%.2f(ms), "
                   "aqu_sz=%.2f, arq_sz=%.2f, rarq_sz=%.2f, warq_sz=%.2f， utils=%.2f\n",
-                  major, minor, dev_name, system_read_kb, system_write_kb, rd_ios_per_sec, rw_ios_per_sec,
-                  rd_kb_per_sec, wr_kb_per_sec, rd_merges_per_sec, wr_merges_per_sec, r_await, w_await, await, aqu_sz,
-                  arq_sz, rarq_sz, warq_sz, utils);
-        }
-        else {
-            debug("\n\tdisk[%d:%d]:'%s' rd_ios_per_sec=%.2f(r/s), rw_ios_per_sec=%.2f(w/s), "
-                  "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), rd_merges_per_sec=%.2f(rrqm/s), "
-                  "wr_merges_per_sec=%.2f(wrqm/s), r_await=%.2f(ms), w_await=%.2f(ms), await=%.2f(ms), "
-                  "aqu_sz=%.2f, arq_sz=%.2f, rarq_sz=%.2f, warq_sz=%.2f， utils=%.2f\n",
-                  major, minor, dev_name, rd_ios_per_sec, rw_ios_per_sec, rd_kb_per_sec, wr_kb_per_sec,
-                  rd_merges_per_sec, wr_merges_per_sec, r_await, w_await, await, aqu_sz, arq_sz, rarq_sz, warq_sz,
+                  major, minor, dev_name, system_read_kb, system_write_kb, rd_ios_per_sec,
+                  rw_ios_per_sec, rd_kb_per_sec, wr_kb_per_sec, rd_merges_per_sec,
+                  wr_merges_per_sec, r_await, w_await, await, aqu_sz, arq_sz, rarq_sz, warq_sz,
                   utils);
+        } else {
+            debug("\n\tdisk[%d:%d]:'%s' rd_ios_per_sec=%.2f(r/s), rw_ios_per_sec=%.2f(w/s), "
+                  "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), "
+                  "rd_merges_per_sec=%.2f(rrqm/s), "
+                  "wr_merges_per_sec=%.2f(wrqm/s), r_await=%.2f(ms), w_await=%.2f(ms), "
+                  "await=%.2f(ms), "
+                  "aqu_sz=%.2f, arq_sz=%.2f, rarq_sz=%.2f, warq_sz=%.2f， utils=%.2f\n",
+                  major, minor, dev_name, rd_ios_per_sec, rw_ios_per_sec, rd_kb_per_sec,
+                  wr_kb_per_sec, rd_merges_per_sec, wr_merges_per_sec, r_await, w_await, await,
+                  aqu_sz, arq_sz, rarq_sz, warq_sz, utils);
         }
 
         // --------------------------------------------------------------------

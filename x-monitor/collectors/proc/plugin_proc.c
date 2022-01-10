@@ -2,11 +2,10 @@
  * @Author: CALM.WU
  * @Date: 2021-11-30 14:59:18
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-12-20 17:40:25
+ * @Last Modified time: 2022-01-10 19:08:02
  */
 
 #include "plugin_proc.h"
-#include "proc_diskstats.h"
 
 #include "routine.h"
 #include "utils/clocks.h"
@@ -23,8 +22,8 @@ static const char *__config_name = "collector_plugin_proc";
 struct proc_metrics_module {
     const char *name;
     int32_t     enabled;
-    int32_t (*func)(int32_t update_every, usec_t dt);  // 执行函数
-    usec_t duration;                                   // 执行的耗时
+    int32_t (*func)(int32_t, usec_t, const char *);  // 执行函数
+    usec_t duration;                                 // 执行的耗时
 };
 
 struct collector_proc {
@@ -38,9 +37,19 @@ static struct collector_proc __collector_proc = { .exit_flag = 0,
                                                   .modules   = {
                                                       // disk metrics
                                                       {
-                                                          .name    = "/proc/diskstats",
+                                                          .name    = "disk_stats",
                                                           .enabled = 1,
                                                           .func    = collector_proc_diskstats,
+                                                      },
+                                                      {
+                                                          .name    = "load_avg",
+                                                          .enabled = 1,
+                                                          .func    = collector_proc_loadavg,
+                                                      },
+                                                      {
+                                                          .name    = "proc_stat",
+                                                          .enabled = 1,
+                                                          .func    = collector_proc_stat,
                                                       },
                                                       // the terminator of this array
                                                       { .name = NULL, .func = NULL },
@@ -67,9 +76,11 @@ int32_t proc_routine_init() {
     // check the enabled status for each module
     for (int32_t i = 0; __collector_proc.modules[i].name; i++) {
         //
-        snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_plugin_proc.%s", __collector_proc.modules[i].name);
+        snprintf(proc_module_cfgname, CONFIG_NAME_MAX, "collector_plugin_proc.%s",
+                 __collector_proc.modules[i].name);
 
-        __collector_proc.modules[i].enabled = appconfig_get_member_bool(proc_module_cfgname, "enable", 1);
+        __collector_proc.modules[i].enabled =
+            appconfig_get_member_bool(proc_module_cfgname, "enable", 1);
         debug("[%s] module %s is %s", __name, __collector_proc.modules[i].name,
               __collector_proc.modules[i].enabled ? "enabled" : "disabled");
     }
@@ -81,6 +92,8 @@ void *proc_routine_start(void *arg) {
 
     int32_t index        = 0;
     int32_t update_every = appconfig_get_int("collector_plugin_proc.update_every", 1);
+
+    static char module_config_path[CONFIG_NAME_MAX + 1] = { 0 };
 
     // 每次更新的时间间隔，单位微秒
     // rrd_update_every单位秒
@@ -102,9 +115,11 @@ void *proc_routine_start(void *arg) {
                 continue;
             }
 
-            debug("[%s] collector %s is running", __name, pmm->name);
+            snprintf(module_config_path, CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmm->name);
 
-            pmm->func(update_every, dt);
+            debug("[%s:%s] config_path[%s] is running", __name, pmm->name, module_config_path);
+
+            pmm->func(update_every, dt, module_config_path);
 
             if (unlikely(__collector_proc.exit_flag)) {
                 break;

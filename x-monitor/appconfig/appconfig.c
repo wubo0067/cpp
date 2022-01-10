@@ -24,8 +24,7 @@ static struct appconfig __appconfig = {
     .rw_lock = PTHREAD_RWLOCK_INITIALIZER,
 };
 
-int32_t appconfig_load(const char *config_file)
-{
+int32_t appconfig_load(const char *config_file) {
     int32_t ret = 0;
 
     info("config file: '%s'", config_file);
@@ -37,11 +36,9 @@ int32_t appconfig_load(const char *config_file)
             strncpy(__appconfig.config_file, config_file, FILENAME_MAX);
             config_init(&__appconfig.cfg);
 
-            if (config_read_file(&__appconfig.cfg, __appconfig.config_file) !=
-                CONFIG_TRUE) {
+            if (config_read_file(&__appconfig.cfg, __appconfig.config_file) != CONFIG_TRUE) {
                 fprintf(stderr, "config_read_file failed: %s:%d - %s",
-                        config_error_file(&__appconfig.cfg),
-                        config_error_line(&__appconfig.cfg),
+                        config_error_file(&__appconfig.cfg), config_error_line(&__appconfig.cfg),
                         config_error_text(&__appconfig.cfg));
                 __appconfig.loaded = false;
                 config_destroy(&__appconfig.cfg);
@@ -60,8 +57,7 @@ int32_t appconfig_load(const char *config_file)
     return ret;
 }
 
-void appconfig_destroy()
-{
+void appconfig_destroy() {
     pthread_rwlock_wrlock(&__appconfig.rw_lock);
     if (__appconfig.loaded) {
         config_destroy(&__appconfig.cfg);
@@ -71,23 +67,18 @@ void appconfig_destroy()
     pthread_rwlock_destroy(&__appconfig.rw_lock);
 }
 
-void appconfig_reload()
-{
+void appconfig_reload() {
     pthread_rwlock_wrlock(&__appconfig.rw_lock);
     if (__appconfig.loaded) {
         config_destroy(&__appconfig.cfg);
         config_init(&__appconfig.cfg);
 
-        if (config_read_file(&__appconfig.cfg, __appconfig.config_file) !=
-            CONFIG_TRUE) {
-            error("config_read_file failed: %s:%d - %s",
-                  config_error_file(&__appconfig.cfg),
-                  config_error_line(&__appconfig.cfg),
-                  config_error_text(&__appconfig.cfg));
+        if (config_read_file(&__appconfig.cfg, __appconfig.config_file) != CONFIG_TRUE) {
+            error("config_read_file failed: %s:%d - %s", config_error_file(&__appconfig.cfg),
+                  config_error_line(&__appconfig.cfg), config_error_text(&__appconfig.cfg));
             __appconfig.loaded = false;
         } else {
-            info("reload config file: '%s' successed.",
-                 __appconfig.config_file);
+            info("reload config file: '%s' successed.", __appconfig.config_file);
             config_write(&__appconfig.cfg, stdout);
             __appconfig.loaded = true;
         }
@@ -106,8 +97,7 @@ void appconfig_reload()
 
 // ----------------------------------------------------------------------------
 
-const char *appconfig_get_str(const char *key, const char *def)
-{
+const char *appconfig_get_str(const char *key, const char *def) {
     if (unlikely(!key)) {
         return def;
     }
@@ -123,8 +113,7 @@ const char *appconfig_get_str(const char *key, const char *def)
     return str;
 }
 
-int32_t appconfig_get_bool(const char *key, int32_t def)
-{
+int32_t appconfig_get_bool(const char *key, int32_t def) {
     if (unlikely(!key)) {
         return def;
     }
@@ -140,8 +129,7 @@ int32_t appconfig_get_bool(const char *key, int32_t def)
     return b;
 }
 
-int32_t appconfig_get_int(const char *key, int32_t def)
-{
+int32_t appconfig_get_int(const char *key, int32_t def) {
     if (unlikely(!key)) {
         return def;
     }
@@ -157,9 +145,7 @@ int32_t appconfig_get_int(const char *key, int32_t def)
     return i;
 }
 
-const char *appconfig_get_member_str(const char *path, const char *key,
-                                     const char *def)
-{
+const char *appconfig_get_member_str(const char *path, const char *key, const char *def) {
     if (unlikely(!path || !key)) {
         return def;
     }
@@ -180,9 +166,7 @@ const char *appconfig_get_member_str(const char *path, const char *key,
     return str;
 }
 
-int32_t appconfig_get_member_bool(const char *path, const char *key,
-                                  int32_t def)
-{
+int32_t appconfig_get_member_bool(const char *path, const char *key, int32_t def) {
     if (unlikely(!path || !key)) {
         return def;
     }
@@ -201,8 +185,7 @@ int32_t appconfig_get_member_bool(const char *path, const char *key,
     return b;
 }
 
-int32_t appconfig_get_member_int(const char *path, const char *key, int32_t def)
-{
+int32_t appconfig_get_member_int(const char *path, const char *key, int32_t def) {
     if (unlikely(!path || !key)) {
         return def;
     }
