@@ -7,11 +7,11 @@
 
 #include "plugins_d.h"
 #include "routine.h"
+#include "utils/clocks.h"
 #include "utils/compiler.h"
 #include "utils/consts.h"
-#include "utils/log.h"
-#include "utils/clocks.h"
 #include "utils/daemon.h"
+#include "utils/log.h"
 #include "utils/popen.h"
 
 #include "appconfig/appconfig.h"
@@ -19,13 +19,13 @@
 #define PLUGINSD_FILE_SUFFIX ".plugin"
 #define PLUGINSD_FILE_SUFFIX_LEN strlen(PLUGINSD_FILE_SUFFIX)
 
-static const char * __name = "PLUGINSD";
+static const char *__name = "PLUGINSD";
 
 struct external_plugin {
-    char config_name[CONFIG_NAME_MAX + 1];
-    char file_name[FILENAME_MAX + 1];
-    char full_file_name[FILENAME_MAX + 1];
-    char cmd[EXTERNAL_PLUGIN_CMD_LINE_MAX + 1]; // the command that it executes
+    char    config_name[CONFIG_NAME_MAX + 1];
+    char    file_name[FILENAME_MAX + 1];
+    char    full_file_name[FILENAME_MAX + 1];
+    char    cmd[EXTERNAL_PLUGIN_CMD_LINE_MAX + 1];  // the command that it executes
     int32_t exit_flag;
 
     volatile sig_atomic_t enabled;
@@ -33,8 +33,8 @@ struct external_plugin {
 
     volatile sig_atomic_t is_working;
     time_t                start_time;
-    pthread_t             thread_id; // routine执行的线程id
-    volatile pid_t        child_pid; //
+    pthread_t             thread_id;  // routine执行的线程id
+    volatile pid_t        child_pid;  //
 
     struct external_plugin *next;
 };
@@ -54,12 +54,10 @@ static struct pluginsd __pluginsd = {
     .exit_flag             = 0,
 };
 
-__attribute__((constructor)) static void pluginsd_register_routine()
-{
+__attribute__((constructor)) static void pluginsd_register_routine() {
     fprintf(stderr, "---register_pluginsd_routine---\n");
     struct xmonitor_static_routine *xsr =
-        (struct xmonitor_static_routine *)calloc(
-            1, sizeof(struct xmonitor_static_routine));
+        (struct xmonitor_static_routine *)calloc(1, sizeof(struct xmonitor_static_routine));
     xsr->name          = __name;
     xsr->config_name   = NULL;
     xsr->enabled       = 1;
@@ -70,29 +68,24 @@ __attribute__((constructor)) static void pluginsd_register_routine()
     register_xmonitor_static_routine(xsr);
 }
 
-static void __external_plugin_thread_cleanup(void *arg)
-{
+static void __external_plugin_thread_cleanup(void *arg) {
     struct external_plugin *ep = (struct external_plugin *)arg;
 
     if (ep->child_pid > 0) {
         siginfo_t info;
-        info("external plugin '%s' killing child process pid %d",
-             ep->config_name, ep->child_pid);
+        info("external plugin '%s' killing child process pid %d", ep->config_name, ep->child_pid);
         if (kill_pid(ep->child_pid) != -1) {
-            info(
-                "external plugin '%s' waiting for child process pid %d to exit...",
-                ep->config_name, ep->child_pid);
+            info("external plugin '%s' waiting for child process pid %d to exit...",
+                 ep->config_name, ep->child_pid);
             waitid(P_PID, (id_t)ep->child_pid, &info, WEXITED);
         }
         ep->child_pid = 0;
     }
     ep->is_working = 0;
-    debug("external plugin '%s' worker thread has been cleaned up...",
-          ep->config_name);
+    debug("external plugin '%s' worker thread has been cleaned up...", ep->config_name);
 }
 
-static void *external_plugin_thread_worker(void *arg)
-{
+static void *external_plugin_thread_worker(void *arg) {
     struct external_plugin *ep = (struct external_plugin *)arg;
     debug("exteranl plugin '%s' thread worker is running", ep->config_name);
 
@@ -139,9 +132,8 @@ static void *external_plugin_thread_worker(void *arg)
             info("from '%s' recv: [%s]", ep->config_name, buf);
         }
 
-        error(
-            "'%s' (pid %d) disconnected after successful data collections (ENDs).",
-            ep->config_name, ep->child_pid);
+        error("'%s' (pid %d) disconnected after successful data collections (ENDs).",
+              ep->config_name, ep->child_pid);
 
         kill_pid(ep->child_pid);
 
@@ -162,47 +154,42 @@ static void *external_plugin_thread_worker(void *arg)
     return NULL;
 }
 
-int32_t pluginsd_routine_init()
-{
+int32_t pluginsd_routine_init() {
     // 插件目录
     const char *plugins_dir =
         appconfig_get_str("application.plugins_directory", DEFAULT_PLUGINS_DIR);
     debug("application.plugins_directory: %s", plugins_dir);
 
     // 扫描频率
-    __pluginsd.scan_frequency =
-        appconfig_get_int("pluginsd.check_for_new_plugins_every", 5);
+    __pluginsd.scan_frequency = appconfig_get_int("pluginsd.check_for_new_plugins_every", 5);
     if (__pluginsd.scan_frequency <= 0) {
         __pluginsd.scan_frequency = 1;
     } else if (__pluginsd.scan_frequency > DEFAULT_SCAN_MAX_FREQUENCY) {
         __pluginsd.scan_frequency = DEFAULT_SCAN_MAX_FREQUENCY;
-        warn(
-            "the pluginsd.check_for_new_plugins_every: %d is too large, set to %d",
-            __pluginsd.scan_frequency, DEFAULT_SCAN_MAX_FREQUENCY);
+        warn("the pluginsd.check_for_new_plugins_every: %d is too large, set to %d",
+             __pluginsd.scan_frequency, DEFAULT_SCAN_MAX_FREQUENCY);
     }
-    debug("pluginsd.check_for_new_plugins_every: %d",
-          __pluginsd.scan_frequency);
+    debug("pluginsd.check_for_new_plugins_every: %d", __pluginsd.scan_frequency);
 
-    debug("[%s] routine init successed", __name);          
+    debug("[%s] routine init successed", __name);
 
     return 0;
 }
 
-void *pluginsd_routine_start(void *arg)
-{
+void *pluginsd_routine_start(void *arg) {
     debug("pluginsd routine start");
 
     // https://www.cnblogs.com/guxuanqing/p/8385077.html
     // pthread_cleanup_push( pluginsd_cleanup, NULL );
 
     while (!__pluginsd.exit_flag) {
-        const char *dir_cfg = appconfig_get_str("application.plugins_directory",
-                                                DEFAULT_PLUGINS_DIR);
+        const char *dir_cfg =
+            appconfig_get_str("application.plugins_directory", DEFAULT_PLUGINS_DIR);
 
         // 扫描插件目录，找到执行程序
         DIR *dir = opendir(dir_cfg);
         if (unlikely(NULL == dir)) {
-            error("cannot open plugins directory '%s'", dir_cfg);
+            error("cannot open plugins directory '%s', reason: %s", dir_cfg, strerror(errno));
             continue;
         }
 
@@ -212,8 +199,7 @@ void *pluginsd_routine_start(void *arg)
                 break;
             }
 
-            if (unlikely(strcmp(entry->d_name, ".") == 0 ||
-                         strcmp(entry->d_name, "..") == 0))
+            if (unlikely(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0))
                 continue;
 
             debug("pluginsd check examining file '%s'", entry->d_name);
@@ -223,10 +209,10 @@ void *pluginsd_routine_start(void *arg)
             if (unlikely(len <= PLUGINSD_FILE_SUFFIX_LEN))
                 continue;
 
-            if (unlikely(strcmp(entry->d_name + len - PLUGINSD_FILE_SUFFIX_LEN,
-                                PLUGINSD_FILE_SUFFIX) != 0)) {
-                debug("file '%s' does not end in '%s'", entry->d_name,
-                      PLUGINSD_FILE_SUFFIX);
+            if (unlikely(
+                    strcmp(entry->d_name + len - PLUGINSD_FILE_SUFFIX_LEN, PLUGINSD_FILE_SUFFIX)
+                    != 0)) {
+                debug("file '%s' does not end in '%s'", entry->d_name, PLUGINSD_FILE_SUFFIX);
                 continue;
             }
 
@@ -235,31 +221,26 @@ void *pluginsd_routine_start(void *arg)
             snprintf(external_plugin_cfgname, CONFIG_NAME_MAX, "pluginsd.%.*s",
                      (int)(len - PLUGINSD_FILE_SUFFIX_LEN), entry->d_name);
 
-            int32_t enabled =
-                appconfig_get_member_bool(external_plugin_cfgname, "enable", 0);
+            int32_t enabled = appconfig_get_member_bool(external_plugin_cfgname, "enable", 0);
             if (unlikely(!enabled)) {
-                debug("external plugin config '%s' is disabled",
-                      external_plugin_cfgname);
+                debug("external plugin config '%s' is disabled", external_plugin_cfgname);
                 continue;
             }
 
             // 判断是否已经在运行
             struct external_plugin *ep      = NULL;
             struct external_plugin *prev_ep = __pluginsd.external_plugins_root;
-            for (ep      = __pluginsd.external_plugins_root; ep;
-                 prev_ep = ep, ep = ep->next) {
+            for (ep = __pluginsd.external_plugins_root; ep; prev_ep = ep, ep = ep->next) {
                 if (unlikely(0 == strcmp(ep->file_name, entry->d_name))) {
                     break;
                 }
             }
             if (ep) {
                 if (1 == ep->is_working) {
-                    debug("external plugin '%s' is already running",
-                          ep->config_name);
+                    debug("external plugin '%s' is already running", ep->config_name);
                     continue;
                 } else {
-                    info("external plugin '%s' is_working: %d", ep->config_name,
-                         ep->is_working);
+                    info("external plugin '%s' is_working: %d", ep->config_name, ep->is_working);
                     // 释放ep
                     if (prev_ep != ep) {
                         prev_ep->next = ep->next;
@@ -274,15 +255,12 @@ void *pluginsd_routine_start(void *arg)
 
             // 没有运行，启动
             if (!ep) {
-                ep = (struct external_plugin *)calloc(
-                    1, sizeof(struct external_plugin));
+                ep = (struct external_plugin *)calloc(1, sizeof(struct external_plugin));
 
-                strncpy(ep->config_name, external_plugin_cfgname,
-                        CONFIG_NAME_MAX);
+                strncpy(ep->config_name, external_plugin_cfgname, CONFIG_NAME_MAX);
                 strncpy(ep->file_name, entry->d_name, FILENAME_MAX);
                 // -Wformat-truncation=
-                snprintf(ep->full_file_name, FILENAME_MAX, "%s/%s", dir_cfg,
-                         entry->d_name);
+                snprintf(ep->full_file_name, FILENAME_MAX, "%s/%s", dir_cfg, entry->d_name);
                 // 检查文件是否可执行
                 if (unlikely(access(ep->full_file_name, X_OK) != 0)) {
                     warn("cannot execute file '%s'", ep->full_file_name);
@@ -291,27 +269,25 @@ void *pluginsd_routine_start(void *arg)
                     continue;
                 }
 
-                ep->enabled      = enabled;
-                ep->start_time   = now_realtime_sec();
-                ep->update_every = appconfig_get_member_int(
-                    external_plugin_cfgname, "update_every", 5);
+                ep->enabled    = enabled;
+                ep->start_time = now_realtime_sec();
+                ep->update_every =
+                    appconfig_get_member_int(external_plugin_cfgname, "update_every", 5);
 
                 // 生成执行命令
                 char *def = "";
-                snprintf(ep->cmd, EXTERNAL_PLUGIN_CMD_LINE_MAX, "exec %s %d %s",
-                         ep->full_file_name, ep->update_every,
-                         appconfig_get_member_str(external_plugin_cfgname,
-                                                  "command_options", def));
+                snprintf(ep->cmd, EXTERNAL_PLUGIN_CMD_LINE_MAX, "exec %s %d %s", ep->full_file_name,
+                         ep->update_every,
+                         appconfig_get_member_str(external_plugin_cfgname, "command_options", def));
 
-                debug("file_name:'%s' full_file_name:'%s', cmd:'%s'",
-                      ep->file_name, ep->full_file_name, ep->cmd);
+                debug("file_name:'%s' full_file_name:'%s', cmd:'%s'", ep->file_name,
+                      ep->full_file_name, ep->cmd);
 
                 // 为命令创建执行线程
-                int32_t ret = pthread_create(&ep->thread_id, NULL,
-                                             external_plugin_thread_worker, ep);
+                int32_t ret =
+                    pthread_create(&ep->thread_id, NULL, external_plugin_thread_worker, ep);
                 if (unlikely(ret != 0)) {
-                    error("cannot create thread for external plugin '%s'",
-                          external_plugin_cfgname);
+                    error("cannot create thread for external plugin '%s'", external_plugin_cfgname);
                     free(ep);
                     ep = NULL;
                     continue;
@@ -333,13 +309,11 @@ void *pluginsd_routine_start(void *arg)
     return 0;
 }
 
-void pluginsd_routine_stop()
-{
+void pluginsd_routine_stop() {
     __pluginsd.exit_flag = 1;
     pthread_join(__pluginsd.thread_id, NULL);
 
-    for (struct external_plugin *p = __pluginsd.external_plugins_root; p;
-         p                         = p->next) {
+    for (struct external_plugin *p = __pluginsd.external_plugins_root; p; p = p->next) {
         p->exit_flag = 1;
         // 对external_plugin的工作线程发送cancel信号, 线程运行到cancel点后退出
         pthread_cancel(p->thread_id);

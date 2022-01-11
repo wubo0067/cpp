@@ -5,31 +5,31 @@
  * @Last Modified time: 2021-11-25 10:35:02
  */
 
-#include "popen.h"
 #include "compiler.h"
 #include "log.h"
+#include "popen.h"
 
 #define PIPE_READ 0
 #define PIPE_WRITE 1
 
-#define FLAG_CREATE_PIPE                                                       \
-    1 // Create a pipe like popen() when set, otherwise set stdout to /dev/null
-#define FLAG_CLOSE_FD                                                          \
-    2 // Close all file descriptors other than STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO
+#define FLAG_CREATE_PIPE \
+    1  // Create a pipe like popen() when set, otherwise set stdout to /dev/null
+#define FLAG_CLOSE_FD \
+    2  // Close all file descriptors other than STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO
 
 /*
- * Returns -1 on failure, 0 on success. When FLAG_CREATE_PIPE is set, on success set the FILE *fp pointer.
+ * Returns -1 on failure, 0 on success. When FLAG_CREATE_PIPE is set, on success set the FILE *fp
+ * pointer.
  */
-static inline int custom_popene(const char *command, volatile pid_t *pidptr,
-                                char **env, uint8_t flags, FILE **fpp)
-{
-    FILE             *fp           = NULL;
-    int32_t           ret          = 0; // success return value
-    int32_t           pipefd[2]    = { -1, -1 };
-    int32_t           error        = 0;
-    pid_t             pid          = 0;
-    char *const       spawn_argv[] = { "sh", "-c", (char *)command, NULL };
-    posix_spawnattr_t attr;
+static inline int custom_popene(const char *command, volatile pid_t *pidptr, char **env,
+                                uint8_t flags, FILE **fpp) {
+    FILE *                     fp           = NULL;
+    int32_t                    ret          = 0;  // success return value
+    int32_t                    pipefd[2]    = { -1, -1 };
+    int32_t                    error        = 0;
+    pid_t                      pid          = 0;
+    char *const                spawn_argv[] = { "sh", "-c", (char *)command, NULL };
+    posix_spawnattr_t          attr;
     posix_spawn_file_actions_t actions;
 
     if (command == NULL || pidptr == NULL) {
@@ -63,17 +63,14 @@ static inline int custom_popene(const char *command, volatile pid_t *pidptr,
     if (!posix_spawn_file_actions_init(&actions)) {
         if (flags & FLAG_CREATE_PIPE) {
             // move the pipe to stdout in the child
-            if (posix_spawn_file_actions_adddup2(&actions, pipefd[PIPE_WRITE],
-                                                 STDOUT_FILENO)) {
-                error("posix_spawn_file_actions_adddup2() failed: %s",
-                      strerror(errno));
+            if (posix_spawn_file_actions_adddup2(&actions, pipefd[PIPE_WRITE], STDOUT_FILENO)) {
+                error("posix_spawn_file_actions_adddup2() failed: %s", strerror(errno));
                 goto error_after_posix_spawn_file_actions_init;
             }
         } else {
-            if (posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO,
-                                                 "/dev/null", O_WRONLY, 0)) {
-                error("posix_spawn_file_actions_addopen() failed: %s",
-                      strerror(errno));
+            if (posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY,
+                                                 0)) {
+                error("posix_spawn_file_actions_addopen() failed: %s", strerror(errno));
             }
         }
     } else {
@@ -85,8 +82,7 @@ static inline int custom_popene(const char *command, volatile pid_t *pidptr,
     if (!(error = posix_spawnattr_init(&attr))) {
         sigset_t mask;
 
-        if (posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK |
-                                                POSIX_SPAWN_SETSIGDEF)) {
+        if (posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGMASK | POSIX_SPAWN_SETSIGDEF)) {
             error("posix_spawnattr_setflags() failed: %s", strerror(errno));
         }
         sigemptyset(&mask);
@@ -101,12 +97,10 @@ static inline int custom_popene(const char *command, volatile pid_t *pidptr,
     // fork and exec 新程序
     if (!posix_spawn(&pid, "/bin/sh", &actions, &attr, spawn_argv, env)) {
         *pidptr = pid;
-        debug("Spawned command: '%s' on pid %d from parent pid %d", command,
-              pid, getpid());
+        debug("Spawned command: '%s' on pid %d from parent pid %d", command, pid, getpid());
     } else {
-        error(
-            "Failed to spawn command '%s' from parent pid %d, posix_spawn() failed reason: %s",
-            command, getpid(), strerror(errno));
+        error("Failed to spawn command '%s' from parent pid %d, posix_spawn() failed reason: %s",
+              command, getpid(), strerror(errno));
         // 子进程创建失败，关闭pipe的读
         if (flags & FLAG_CREATE_PIPE) {
             fclose(fp);
@@ -164,23 +158,19 @@ error_after_pipe:
 // See man environ
 extern char **environ;
 
-FILE *mypopen(const char *command, volatile pid_t *pidptr)
-{
+FILE *mypopen(const char *command, volatile pid_t *pidptr) {
     FILE *fp = NULL;
-    custom_popene(command, pidptr, environ, FLAG_CREATE_PIPE | FLAG_CLOSE_FD,
-                  &fp);
+    custom_popene(command, pidptr, environ, FLAG_CREATE_PIPE | FLAG_CLOSE_FD, &fp);
     return fp;
 }
 
-FILE *mypopene(const char *command, volatile pid_t *pidptr, char **env)
-{
+FILE *mypopene(const char *command, volatile pid_t *pidptr, char **env) {
     FILE *fp = NULL;
     custom_popene(command, pidptr, env, FLAG_CREATE_PIPE | FLAG_CLOSE_FD, &fp);
     return fp;
 }
 
-static int32_t custom_pclose(FILE *fp, pid_t pid)
-{
+static int32_t custom_pclose(FILE *fp, pid_t pid) {
     int32_t   ret = 0;
     siginfo_t info;
 
@@ -200,8 +190,7 @@ static int32_t custom_pclose(FILE *fp, pid_t pid)
         switch (info.si_code) {
         case CLD_EXITED:
             if (info.si_status != 0) {
-                debug("child pid: %d exited with status: %d", pid,
-                      info.si_status);
+                debug("child pid: %d exited with status: %d", pid, info.si_status);
             }
             return info.si_status;
         case CLD_KILLED:
@@ -212,8 +201,7 @@ static int32_t custom_pclose(FILE *fp, pid_t pid)
             debug("child pid: %d killed by signal: %d", pid, info.si_status);
             return -1;
         case CLD_DUMPED:
-            debug("child pid: %d core dumped by signal: %d", pid,
-                  info.si_status);
+            debug("child pid: %d core dumped by signal: %d", pid, info.si_status);
             return -2;
         case CLD_STOPPED:
             debug("child pid: %d stopped by signal: %d", pid, info.si_status);
@@ -225,8 +213,8 @@ static int32_t custom_pclose(FILE *fp, pid_t pid)
             debug("child pid: %d continued by signal: %d", pid, info.si_status);
             return 0;
         default:
-            error("child pid %d gave us a SIGCHLD with code %d and status %d",
-                  info.si_pid, info.si_code, info.si_status);
+            error("child pid %d gave us a SIGCHLD with code %d and status %d", info.si_pid,
+                  info.si_code, info.si_status);
             return -5;
         }
     } else {
@@ -236,7 +224,6 @@ static int32_t custom_pclose(FILE *fp, pid_t pid)
     return 0;
 }
 
-int32_t mypclose(FILE *fp, pid_t pid)
-{
+int32_t mypclose(FILE *fp, pid_t pid) {
     return custom_pclose(fp, pid);
 }

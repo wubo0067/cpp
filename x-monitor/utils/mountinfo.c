@@ -27,14 +27,15 @@ static const char *__mountinfo_file = "/proc/self/mountinfo";
      || (strcmp("-hosts", Fs_name) == 0))
 #endif
 
-#define ME_DUMMY_0(Fs_name, Fs_type)                                                                         \
-    (strcmp(Fs_type, "autofs") == 0 || strcmp(Fs_type, "proc") == 0                                          \
-     || strcmp(Fs_type, "subfs") == 0 /* for Linux 2.6/3.x */                                                \
-     || strcmp(Fs_type, "debugfs") == 0 || strcmp(Fs_type, "devpts") == 0 || strcmp(Fs_type, "fusectl") == 0 \
-     || strcmp(Fs_type, "mqueue") == 0 || strcmp(Fs_type, "rpc_pipefs") == 0                                 \
-     || strcmp(Fs_type, "sysfs") == 0  /* FreeBSD, Linux 2.4 */                                              \
-     || strcmp(Fs_type, "devfs") == 0  /* for NetBSD 3.0 */                                                  \
-     || strcmp(Fs_type, "kernfs") == 0 /* for Irix 6.5 */                                                    \
+#define ME_DUMMY_0(Fs_name, Fs_type)                                      \
+    (strcmp(Fs_type, "autofs") == 0 || strcmp(Fs_type, "proc") == 0       \
+     || strcmp(Fs_type, "subfs") == 0 /* for Linux 2.6/3.x */             \
+     || strcmp(Fs_type, "debugfs") == 0 || strcmp(Fs_type, "devpts") == 0 \
+     || strcmp(Fs_type, "fusectl") == 0 || strcmp(Fs_type, "mqueue") == 0 \
+     || strcmp(Fs_type, "rpc_pipefs") == 0                                \
+     || strcmp(Fs_type, "sysfs") == 0  /* FreeBSD, Linux 2.4 */           \
+     || strcmp(Fs_type, "devfs") == 0  /* for NetBSD 3.0 */               \
+     || strcmp(Fs_type, "kernfs") == 0 /* for Irix 6.5 */                 \
      || strcmp(Fs_type, "ignore") == 0)
 
 /* Historically, we have marked as "dummy" any file system of type "none",
@@ -82,11 +83,9 @@ static char *strdup_decoding_octal(const char *string) {
                 c <<= 3;
                 c |= *s++ - '0';
                 *d++ = c;
-            }
-            else
+            } else
                 *d++ = '_';
-        }
-        else
+        } else
             *d++ = *s++;
     }
     *d = '\0';
@@ -136,7 +135,8 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
             ;
 
         if (unlikely(!*minor)) {
-            error("Cannot parse major:minor on '%s' at line %u of '%s'", major, l + 1, __mountinfo_file);
+            error("Cannot parse major:minor on '%s' at line %u of '%s'", major, l + 1,
+                  __mountinfo_file);
             free(mi);
             continue;
         }
@@ -186,8 +186,9 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
             w++;
             mi->mount_source_hash = bkrd_hash(mi->mount_source, strlen(mi->mount_source));
 
-            mi->mount_source_name      = strdup(basename(mi->mount_source));
-            mi->mount_source_name_hash = bkrd_hash(mi->mount_source_name, strlen(mi->mount_source_name));
+            mi->mount_source_name = strdup(basename(mi->mount_source));
+            mi->mount_source_name_hash =
+                bkrd_hash(mi->mount_source_name, strlen(mi->mount_source_name));
 
             mi->super_options = strdup(procfile_lineword(pf, l, w));
             w++;
@@ -206,8 +207,7 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
 
             if (do_statvfs) {
                 // mark as BIND the duplicates (i.e. same filesystem + same source)
-            }
-            else {
+            } else {
                 mi->st_dev = 0;
             }
         }
@@ -220,8 +220,7 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
         // 插入链表
         if (unlikely(!root)) {
             root = mi;
-        }
-        else {
+        } else {
             last->next = mi;
         }
 
@@ -231,9 +230,11 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
         debug("MOUNTINFO: %d %d %u:%u root '%s', mount point '%s', mount options '%s', "
               "filesystem '%s', mount source '%s', super options '%s'%s%s%s%s%s%s\n",
               mi->id, mi->parent_id, mi->major, mi->minor, mi->root,  // mi->persistent_id,
-              (mi->mount_point) ? mi->mount_point : "", (mi->mount_options) ? mi->mount_options : "",
-              (mi->filesystem) ? mi->filesystem : "", (mi->mount_source) ? mi->mount_source : "",
-              (mi->super_options) ? mi->super_options : "", (mi->flags & MOUNTINFO_FLAG_IS_DUMMY) ? " DUMMY" : "",
+              (mi->mount_point) ? mi->mount_point : "",
+              (mi->mount_options) ? mi->mount_options : "", (mi->filesystem) ? mi->filesystem : "",
+              (mi->mount_source) ? mi->mount_source : "",
+              (mi->super_options) ? mi->super_options : "",
+              (mi->flags & MOUNTINFO_FLAG_IS_DUMMY) ? " DUMMY" : "",
               (mi->flags & MOUNTINFO_FLAG_IS_BIND) ? " BIND" : "",
               (mi->flags & MOUNTINFO_FLAG_IS_REMOTE) ? " REMOTE" : "",
               (mi->flags & MOUNTINFO_FLAG_NO_STAT) ? " NOSTAT" : "",

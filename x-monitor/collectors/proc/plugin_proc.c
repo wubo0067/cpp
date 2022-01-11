@@ -117,7 +117,8 @@ void *proc_routine_start(void *arg) {
 
             snprintf(module_config_path, CONFIG_NAME_MAX, "collector_plugin_proc.%s", pmm->name);
 
-            debug("[%s:%s] config_path[%s] is running", __name, pmm->name, module_config_path);
+            debug("index:%d [%s:%s] config_path[%s] is running", index, __name, pmm->name,
+                  module_config_path);
 
             pmm->func(update_every, dt, module_config_path);
 

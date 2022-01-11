@@ -164,10 +164,12 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
     const char *f_diskstat =
         appconfig_get_member_str(config_path, "monitor_file", __proc_diskstat_filename);
 
-    __pf_diskstats = procfile_open(f_diskstat, " \t", PROCFILE_FLAG_DEFAULT);
     if (unlikely(!__pf_diskstats)) {
-        error("Cannot open /proc/diskstats");
-        return -1;
+        __pf_diskstats = procfile_open(f_diskstat, " \t", PROCFILE_FLAG_DEFAULT);
+        if (unlikely(!__pf_diskstats)) {
+            error("Cannot open /proc/diskstats");
+            return -1;
+        }
     }
 
     __pf_diskstats = procfile_readall(__pf_diskstats);
