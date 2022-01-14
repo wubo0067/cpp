@@ -329,7 +329,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
             system_read_kb += curr_devstats->rd_sectors / 2;
             system_write_kb += curr_devstats->wr_sectors / 2;
 
-            debug("\n\tdisk[%d:%d]:'%s' system_read_kb=%ld(Kb ), system_write_kb=%ld(Kb), "
+            debug("disk[%d:%d]:'%s' system_read_kb=%ld(Kb ), system_write_kb=%ld(Kb), "
                   "rd_ios_per_sec=%.2f(r/s), "
                   "rw_ios_per_sec=%.2f(w/s), "
                   "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), "
@@ -342,7 +342,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
                   wr_merges_per_sec, r_await, w_await, await, aqu_sz, arq_sz, rarq_sz, warq_sz,
                   utils);
         } else {
-            debug("\n\tdisk[%d:%d]:'%s' rd_ios_per_sec=%.2f(r/s), rw_ios_per_sec=%.2f(w/s), "
+            debug("disk[%d:%d]:'%s' rd_ios_per_sec=%.2f(r/s), rw_ios_per_sec=%.2f(w/s), "
                   "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), "
                   "rd_merges_per_sec=%.2f(rrqm/s), "
                   "wr_merges_per_sec=%.2f(wrqm/s), r_await=%.2f(ms), w_await=%.2f(ms), "

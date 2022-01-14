@@ -23,6 +23,7 @@
 
      ```
      top -d 1 -p  `pidof x-monitor`
+     pidstat -r -u -t -p  `pidof x-monitor` 1 10000
      ```
 
 2. ##### proc_file
