@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-10 10:49:20
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-10 17:07:45
+ * @Last Modified time: 2022-01-13 17:08:07
  */
 
 #include "plugin_proc.h"
@@ -22,6 +22,8 @@ static struct proc_file *__pf_loadavg            = NULL;
 
 int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
+    debug("[PLUGIN_PROC:proc_loadavg] config:%s running", config_path);
+
     const char *f_loadavg =
         appconfig_get_member_str(config_path, "monitor_file", __proc_loadavg_filename);
 

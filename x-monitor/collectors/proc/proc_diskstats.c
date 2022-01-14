@@ -161,6 +161,8 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
 }
 
 int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const char *config_path) {
+    debug("[PLUGIN_PROC:proc_diskstats] config:%s running", config_path);
+
     const char *f_diskstat =
         appconfig_get_member_str(config_path, "monitor_file", __proc_diskstat_filename);
 
