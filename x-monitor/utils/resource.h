@@ -14,8 +14,6 @@
 extern "C" {
 #endif
 
-extern int32_t processors;
-
 extern int32_t bump_memlock_rlimit(void);
 
 extern const char *get_username(uid_t uid);

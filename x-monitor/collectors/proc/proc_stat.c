@@ -17,23 +17,9 @@
 
 #include "appconfig/appconfig.h"
 
-int32_t processors = 1;
-
 static const char *      __proc_stat_filename = "/proc/stat";
 static struct proc_file *__pf_stat            = NULL;
 
-static bool __do_cpu_utilization, __do_per_cpu_core_utilization, __do_context_switches,
-    __do_cpu_interrupts, __do_processes_fork, __do_processes_running;
-
-static void __set_do_config(const char *config_path) {
-    __do_cpu_utilization = appconfig_get_member_bool(config_path, "cpu_utilization", true);
-    __do_per_cpu_core_utilization =
-        appconfig_get_member_bool(config_path, "per_cpu_core_utilization", true);
-    __do_context_switches  = appconfig_get_member_bool(config_path, "context_switches", true);
-    __do_cpu_interrupts    = appconfig_get_member_bool(config_path, "cpu_interrupts", true);
-    __do_processes_fork    = appconfig_get_member_bool(config_path, "processes_fork", true);
-    __do_processes_running = appconfig_get_member_bool(config_path, "processes_running", true);
-}
 
 static void do_cpu_utilization(size_t line, int32_t core_index) {
     // debug("[PLUGIN_PROC:proc_stat] /proc/stat line: %lu, core_index: %d", line, core_index);
@@ -76,8 +62,6 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
 
 int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_path) {
     debug("[PLUGIN_PROC:proc_stat] config:%s running", config_path);
-    // 设置配置
-    __set_do_config(config_path);
 
     const char *f_stat =
         appconfig_get_member_str(config_path, "monitor_file", __proc_stat_filename);

@@ -21,6 +21,8 @@
 #include "appconfig/appconfig.h"
 #include "plugins.d/plugins_d.h"
 
+#include "prometheus-client-c/promhttp.h"
+
 #define BUF_SIZE 1024
 
 struct option_def {
@@ -50,6 +52,8 @@ static const struct option_def option_definitions[] = {
 };
 
 static char pid_file[PID_FILENAME_MAX + 1] = "";
+
+static struct MHD_Daemon *__promhttp_daemon = NULL;
 
 struct xmonitor_static_routine_list {
     struct xmonitor_static_routine *root;
@@ -141,6 +145,8 @@ static void on_signal(int32_t signo, enum signal_action_mode mode) {
 
         // free config
         appconfig_destroy();
+
+        MHD_stop_daemon(__promhttp_daemon);
         // free log
         log_fini();
     } else if (E_SIGNAL_RELOADCONFIG == mode) {
@@ -211,6 +217,8 @@ int32_t main(int32_t argc, char *argv[]) {
         help();
     }
 
+    promhttp_set_active_collector_registry(NULL);
+
     // 信号初始化
     signals_block();
     signals_init();
@@ -260,6 +268,8 @@ int32_t main(int32_t argc, char *argv[]) {
             }
         }
     }
+
+    __promhttp_daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
 
     // 解除信号阻塞
     signals_unblock();

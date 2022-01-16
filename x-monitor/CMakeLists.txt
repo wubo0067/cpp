@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.18)
-project (x-monitor) 
+project (x-monitor)
 
 set(CMAKE_C_COMPILER "/usr/bin/gcc")
 set(CMAKE_CXX_COMPILER "/usr/bin/g++")
@@ -38,7 +38,7 @@ set (XMonitor_VERSION_MINOR 0)
 # 依赖项
 set(EXTRA_DIR "${PROJECT_SOURCE_DIR}/extra")
 set(KERNEL_DIR "/usr/src/linux-5.12.9")
- 
+
 # 配置一个头文件来传递一些CMake设置到源代码
 configure_file (
   "${PROJECT_SOURCE_DIR}/config.h.in"
@@ -53,14 +53,34 @@ set(EBPF_USER_INCLUDE_DIRS "${KERNEL_DIR}/usr/include"
                            "${KERNEL_DIR}/tools/testing/selftests/bpf")
 
 # 头文件include目录
-include_directories("${PROJECT_SOURCE_DIR}" 
+include_directories("${PROJECT_SOURCE_DIR}"
                     "${EXTRA_DIR}/include")
 
 # 第三方静态库链接路径
 link_directories("${PROJECT_SOURCE_DIR}/extra/libs")
 
 # 第三方库
-set(EXTRA_LIBS "libjson-c.a" "libconfig.a" "libzlog.a" "libcollectc.a" "libbcc.a" "libpcre2-8.a" "libpcre2-posix.a")
+set(EXTRA_LIBS "libjson-c.a"
+              "libconfig.a"
+              "libzlog.a"
+              "libcollectc.a"
+              "libbcc.a"
+              "libpcre2-8.a"
+              "libpcre2-posix.a"
+              "libpromhttp.a"
+              "libprom.a"
+              "libmicrohttpd.a"
+              "libgnutls.a"
+              "libidn2.a"
+              "libhogweed.a"
+              "libnettle.a"
+              "libp11-kit-internal.a"
+              "libp11-library.a"
+              "libp11-common.a"
+              "libffi.a"
+              "libtasn1.a"
+              "libunistring.a"
+              "libgmp.a")
 
 # 自定义宏
 # add_definitions(
@@ -96,7 +116,7 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_stat.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
-        )        
+        )
 
 # 编译的执行程序
 add_executable(x-monitor main.c
@@ -104,6 +124,6 @@ add_executable(x-monitor main.c
                         ${APPCONFIG_FILES}
                         ${PROC_PLUGIN_FILES}
                         )
-target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")                        
-                        
-target_link_libraries(x-monitor xmonitor-utils ${EXTRA_LIBS} pthread z m)
+target_compile_definitions(x-monitor PRIVATE -DDEBUG -DCONFIG_FILENAME="/etc/x-monitor/x-monitor.cfg" -DLOG_DIR="/usr/log/x-monitor")
+
+target_link_libraries(x-monitor xmonitor-utils ${EXTRA_LIBS} pthread dl z m)

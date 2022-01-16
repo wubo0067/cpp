@@ -1,8 +1,25 @@
 1. ##### x-monitor
 
+   - 依赖
+
+     ```
+     dnf install libev.x86_64 libev-devel.x86_64
+     wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
+     wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
+     git clone https://github.com/libffi/libffi.git
+     wget https://ftp.gnu.org/gnu/libtasn1/libtasn1-4.18.0.tar.gz
+     wget https://ftp.gnu.org/gnu/libunistring/libunistring-1.0.tar.gz
+     wget https://github.com/p11-glue/p11-kit/archive/refs/tags/0.24.0.tar.gz
+     
+     ./configure --prefix=/usr --enable-static #编译静态库
+     https://www.gnutls.org/download.html
+     https://www.gnu.org/software/libunistring/#TOCdownloading
+     ```
+
    - 编译
 
      ```
+     
      cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
      make x-monitor VERBOSE=1
      ```

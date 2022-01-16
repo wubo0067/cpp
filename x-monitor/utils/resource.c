@@ -6,11 +6,12 @@
  */
 
 #include "common.h"
+#include "compiler.h"
 #include "log.h"
 #include "procfile.h"
 #include "resource.h"
 
-int32_t processors = 1;
+static int32_t __processors = 1;
 
 static const char __no_user[] = "";
 
@@ -36,18 +37,18 @@ int32_t get_system_cpus() {
 
     struct proc_file *pf_stat = procfile_open("/proc/stat", NULL, PROCFILE_FLAG_DEFAULT);
     if (unlikely(!pf_stat)) {
-        error("Cannot open /proc/stat. Assuming system has %d processors. error: %s", processors,
+        error("Cannot open /proc/stat. Assuming system has %d processors. error: %s", __processors,
               strerror(errno));
-        return processors;
+        return __processors;
     }
 
     pf_stat = procfile_readall(pf_stat);
     if (unlikely(!pf_stat)) {
-        error("Cannot read /proc/stat. Assuming system has %d processors.", processors);
-        return processors;
+        error("Cannot read /proc/stat. Assuming system has %d __processors.", __processors);
+        return __processors;
     }
 
-    processors = 0;
+    __processors = 0;
 
     for (int32_t index = 0; index < procfile_lines(pf_stat); index++) {
         if (!procfile_linewords(pf_stat, index)) {
@@ -55,18 +56,18 @@ int32_t get_system_cpus() {
         }
 
         if (strncmp(procfile_lineword(pf_stat, index, 0), "cpu", 3) == 0) {
-            processors++;
+            __processors++;
         }
     }
 
-    processors--;
-    if (processors < 1) {
-        processors = 1;
+    __processors--;
+    if (__processors < 1) {
+        __processors = 1;
     }
 
     procfile_close(pf_stat);
 
-    debug("System has %d processors.", processors);
+    debug("System has %d __processors.", __processors);
 
-    return processors;
+    return __processors;
 }
