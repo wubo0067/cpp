@@ -54,7 +54,8 @@ set(EBPF_USER_INCLUDE_DIRS "${KERNEL_DIR}/usr/include"
 
 # 头文件include目录
 include_directories("${PROJECT_SOURCE_DIR}"
-                    "${EXTRA_DIR}/include")
+                    "${EXTRA_DIR}/include"
+                    "${EXTRA_DIR}/include/microhttpd")
 
 # 第三方静态库链接路径
 link_directories("${PROJECT_SOURCE_DIR}/extra/libs")

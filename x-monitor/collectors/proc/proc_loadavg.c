@@ -7,6 +7,8 @@
 
 #include "plugin_proc.h"
 
+#include "prometheus-client-c/prom.h"
+
 #include "utils/compiler.h"
 #include "utils/consts.h"
 #include "utils/log.h"
@@ -19,6 +21,9 @@
 
 static const char *      __proc_loadavg_filename = "/proc/loadavg";
 static struct proc_file *__pf_loadavg            = NULL;
+
+static prom_gauge_t *__prom_loadavg_1min = NULL, *__prom_loadavg_5min = NULL,
+                    *__prom_loadavg_15min = NULL;
 
 int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
@@ -62,6 +67,24 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     debug("LOAD AVERAGE: %.2f %.2f %.2f running_processes: %lu total_processes: %lu "
           "last_running_pid: %d",
           load_1m, load_5m, load_15m, running_processes, total_processes, last_running_pid);
+
+    if (unlikely(!__prom_loadavg_1min)) {
+        __prom_loadavg_1min = prom_collector_registry_must_register_metric(
+            prom_gauge_new("loadavg_1min", "System Load Average", 1, (const char *[]){ "load1" }));
+    }
+    prom_gauge_set(__prom_loadavg_1min, load_1m, (const char *[]){ "load1" });
+
+    if (unlikely(!__prom_loadavg_5min)) {
+        __prom_loadavg_5min = prom_collector_registry_must_register_metric(
+            prom_gauge_new("loadavg_5min", "System Load Average", 1, (const char *[]){ "load5" }));
+    }
+    prom_gauge_set(__prom_loadavg_5min, load_5m, (const char *[]){ "load5" });
+
+    if (unlikely(!__prom_loadavg_15min)) {
+        __prom_loadavg_15min = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "loadavg_15min", "System Load Average", 1, (const char *[]){ "load15" }));
+    }
+    prom_gauge_set(__prom_loadavg_15min, load_15m, (const char *[]){ "load15" });
 
     return 0;
 }

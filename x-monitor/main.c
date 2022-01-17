@@ -146,6 +146,7 @@ static void on_signal(int32_t signo, enum signal_action_mode mode) {
         // free config
         appconfig_destroy();
 
+        prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
         MHD_stop_daemon(__promhttp_daemon);
         // free log
         log_fini();
@@ -157,7 +158,7 @@ static void on_signal(int32_t signo, enum signal_action_mode mode) {
 int32_t main(int32_t argc, char *argv[]) {
     char    UNUSED(buf[BUF_SIZE]) = { 0 };
     pid_t   UNUSED(child_pid)     = 0;
-    int32_t dont_fork             = 0;
+    int32_t dont_fork             = 1;
     int32_t config_loaded         = 0;
     int32_t ret                   = 0;
 
@@ -217,6 +218,12 @@ int32_t main(int32_t argc, char *argv[]) {
         help();
     }
 
+    ret = prom_collector_registry_default_init();
+    if (unlikely(0 != ret)) {
+        error("prom_collector_registry_default_init failed, ret: %d", ret);
+        return -1;
+    }
+
     promhttp_set_active_collector_registry(NULL);
 
     // 信号初始化
@@ -255,6 +262,12 @@ int32_t main(int32_t argc, char *argv[]) {
     const char *user = appconfig_get_str("application.run_as_user", NULL);
     become_daemon(dont_fork, pid_file, user);
 
+    __promhttp_daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
+    if (unlikely(!__promhttp_daemon)) {
+        error("promhttp_start_daemon failed");
+        return -1;
+    }
+
     // START routines
     routine = __xmonitor_static_routine_list.root;
     for (; routine; routine = routine->next) {
@@ -268,8 +281,6 @@ int32_t main(int32_t argc, char *argv[]) {
             }
         }
     }
-
-    __promhttp_daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
 
     // 解除信号阻塞
     signals_unblock();

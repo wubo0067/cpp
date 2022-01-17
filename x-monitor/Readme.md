@@ -16,6 +16,13 @@
      https://www.gnu.org/software/libunistring/#TOCdownloading
      ```
 
+   - microhttpd不支持https，减少库的依赖
+
+     ```
+     https://ftp.gnu.org/gnu/libmicrohttpd/
+     ./configure --disable-https --prefix=/usr --enable-static
+     ```
+
    - 编译
 
      ```
@@ -157,7 +164,13 @@
 
 7. ##### 监控指标
 
-   1. 进程的打开文件句柄数量
+   1. 在Prometheus中查看指标的秒级数据
+   
+      ```
+      loadavg_5min{load5="load5"}[5m]
+      ```
+   
+      时间戳转换工具：[Unix时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
 
 
 
