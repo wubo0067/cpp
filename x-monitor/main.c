@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-12 10:44:47
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-13 16:49:55
+ * @Last Modified time: 2022-01-18 14:52:18
  */
 
 #include "config.h"
@@ -14,6 +14,7 @@
 #include "utils/consts.h"
 #include "utils/daemon.h"
 #include "utils/log.h"
+#include "utils/os.h"
 #include "utils/popen.h"
 #include "utils/resource.h"
 #include "utils/signals.h"
@@ -215,6 +216,12 @@ int32_t main(int32_t argc, char *argv[]) {
         help();
     }
 
+    uint16_t metrics_http_export_port =
+        (uint16_t)appconfig_get_member_int("application.metrics_http_exporter", "port", 8000);
+    snprintf(premetheus_instance_label, PREMETHEUS_INSTANCE_LABLE_LEN - 1, "%s:%d", get_hostname(),
+             metrics_http_export_port);
+    debug("premetheus_instance_label: %s", premetheus_instance_label);
+
     ret = prom_collector_registry_default_init();
     if (unlikely(0 != ret)) {
         error("prom_collector_registry_default_init failed, ret: %d", ret);
@@ -259,7 +266,9 @@ int32_t main(int32_t argc, char *argv[]) {
     const char *user = appconfig_get_str("application.run_as_user", NULL);
     become_daemon(dont_fork, pid_file, user);
 
-    __promhttp_daemon = promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, 8000, NULL, NULL);
+    // 启动metrics http exporter
+    __promhttp_daemon =
+        promhttp_start_daemon(MHD_USE_SELECT_INTERNALLY, metrics_http_export_port, NULL, NULL);
     if (unlikely(!__promhttp_daemon)) {
         error("promhttp_start_daemon failed");
         return -1;

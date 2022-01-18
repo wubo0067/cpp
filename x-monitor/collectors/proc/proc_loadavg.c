@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-10 10:49:20
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-13 17:08:07
+ * @Last Modified time: 2022-01-18 15:03:56
  */
 
 #include "plugin_proc.h"
@@ -69,22 +69,25 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
           load_1m, load_5m, load_15m, running_processes, total_processes, last_running_pid);
 
     if (unlikely(!__prom_loadavg_1min)) {
-        __prom_loadavg_1min = prom_collector_registry_must_register_metric(
-            prom_gauge_new("loadavg_1min", "System Load Average", 1, (const char *[]){ "load1m" }));
+        __prom_loadavg_1min = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "loadavg_1min", "System Load Average", 2, (const char *[]){ "instance", "load" }));
     }
-    prom_gauge_set(__prom_loadavg_1min, load_1m, (const char *[]){ "load1" });
+    prom_gauge_set(__prom_loadavg_1min, load_1m,
+                   (const char *[]){ premetheus_instance_label, "load1m" });
 
     if (unlikely(!__prom_loadavg_5min)) {
-        __prom_loadavg_5min = prom_collector_registry_must_register_metric(
-            prom_gauge_new("loadavg_5min", "System Load Average", 1, (const char *[]){ "load5m" }));
+        __prom_loadavg_5min = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "loadavg_5min", "System Load Average", 2, (const char *[]){ "instance", "load" }));
     }
-    prom_gauge_set(__prom_loadavg_5min, load_5m, (const char *[]){ "load5" });
+    prom_gauge_set(__prom_loadavg_5min, load_5m,
+                   (const char *[]){ premetheus_instance_label, "load5m" });
 
     if (unlikely(!__prom_loadavg_15min)) {
         __prom_loadavg_15min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_15min", "System Load Average", 1, (const char *[]){ "load15m" }));
+            "loadavg_15min", "System Load Average", 2, (const char *[]){ "instance", "load" }));
     }
-    prom_gauge_set(__prom_loadavg_15min, load_15m, (const char *[]){ "load15" });
+    prom_gauge_set(__prom_loadavg_15min, load_15m,
+                   (const char *[]){ premetheus_instance_label, "load15m" });
 
     return 0;
 }
