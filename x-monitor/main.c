@@ -158,7 +158,7 @@ static void on_signal(int32_t signo, enum signal_action_mode mode) {
 int32_t main(int32_t argc, char *argv[]) {
     char    UNUSED(buf[BUF_SIZE]) = { 0 };
     pid_t   UNUSED(child_pid)     = 0;
-    int32_t dont_fork             = 1;
+    int32_t dont_fork             = 0;
     int32_t config_loaded         = 0;
     int32_t ret                   = 0;
 
@@ -166,20 +166,17 @@ int32_t main(int32_t argc, char *argv[]) {
     {
         int32_t opts_count = (int32_t)ARRAY_SIZE(option_definitions);
         char    opt_str[(opts_count * 2) + 1];
+        memset(opt_str, 0, sizeof(opt_str));
 
         int32_t opt_str_i = 0;
         for (int32_t i = 0; i < opts_count; i++) {
             opt_str[opt_str_i] = option_definitions[i].val;
             opt_str_i++;
             if (option_definitions[i].arg_name) {
-                opt_str[opt_str_i++] = ':';
+                opt_str[opt_str_i] = ':';
                 opt_str_i++;
             }
         }
-
-        // terminate optstring
-        opt_str[opt_str_i]        = '\0';
-        opt_str[(opts_count * 2)] = '\0';
 
         int32_t opt = 0;
 
