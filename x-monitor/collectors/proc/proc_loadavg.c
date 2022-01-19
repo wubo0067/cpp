@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-10 10:49:20
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-18 15:03:56
+ * @Last Modified time: 2022-01-18 15:20:04
  */
 
 #include "plugin_proc.h"
@@ -22,8 +22,33 @@
 static const char *      __proc_loadavg_filename = "/proc/loadavg";
 static struct proc_file *__pf_loadavg            = NULL;
 
-static prom_gauge_t *__prom_loadavg_1min = NULL, *__prom_loadavg_5min = NULL,
-                    *__prom_loadavg_15min = NULL;
+static prom_gauge_t *__metric_loadavg_1min = NULL, *__metric_loadavg_5min = NULL,
+                    *__metric_loadavg_15min = NULL, *__metric_active_processes = NULL;
+
+int32_t init_collector_proc_loadavg() {
+    if (unlikely(!__metric_loadavg_1min)) {
+        __metric_loadavg_1min = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "loadavg_1min", "System Load Average", 2, (const char *[]){ "host", "load" }));
+    }
+
+    if (unlikely(!__metric_loadavg_5min)) {
+        __metric_loadavg_5min = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "loadavg_5min", "System Load Average", 2, (const char *[]){ "host", "load" }));
+    }
+
+    if (unlikely(!__metric_loadavg_15min)) {
+        __metric_loadavg_15min = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "loadavg_15min", "System Load Average", 2, (const char *[]){ "host", "load" }));
+    }
+
+    if (unlikely(!__metric_active_processes)) {
+        __metric_active_processes = prom_collector_registry_must_register_metric(
+            prom_gauge_new("active_processes", "System Active Processes", 2,
+                           (const char *[]){ "host", "system" }));
+    }
+    debug("[PLUGIN_PROC:proc_loadavg] init successed");
+    return 0;
+}
 
 int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                                const char *config_path) {
@@ -60,34 +85,55 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     double load_5m  = strtod(procfile_lineword(__pf_loadavg, 0, 1), NULL);
     double load_15m = strtod(procfile_lineword(__pf_loadavg, 0, 2), NULL);
 
-    uint64_t running_processes = str2ull(procfile_lineword(__pf_loadavg, 0, 3));
-    uint64_t total_processes   = str2ull(procfile_lineword(__pf_loadavg, 0, 4));
-    pid_t    last_running_pid  = (pid_t)strtoll(procfile_lineword(__pf_loadavg, 0, 5), NULL, 10);
+    // /proc/stat中有该数值
+    // uint64_t running_processes = str2ull(procfile_lineword(__pf_loadavg, 0, 3));
+    uint64_t active_processes = str2ull(procfile_lineword(__pf_loadavg, 0, 4));
+    pid_t    last_running_pid = (pid_t)strtoll(procfile_lineword(__pf_loadavg, 0, 5), NULL, 10);
 
-    debug("LOAD AVERAGE: %.2f %.2f %.2f running_processes: %lu total_processes: %lu "
+    debug("LOAD AVERAGE: %.2f %.2f %.2f active_processes: %lu "
           "last_running_pid: %d",
-          load_1m, load_5m, load_15m, running_processes, total_processes, last_running_pid);
+          load_1m, load_5m, load_15m, active_processes, last_running_pid);
 
-    if (unlikely(!__prom_loadavg_1min)) {
-        __prom_loadavg_1min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_1min", "System Load Average", 2, (const char *[]){ "instance", "load" }));
-    }
-    prom_gauge_set(__prom_loadavg_1min, load_1m,
+    prom_gauge_set(__metric_loadavg_1min, load_1m,
                    (const char *[]){ premetheus_instance_label, "load1m" });
 
-    if (unlikely(!__prom_loadavg_5min)) {
-        __prom_loadavg_5min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_5min", "System Load Average", 2, (const char *[]){ "instance", "load" }));
-    }
-    prom_gauge_set(__prom_loadavg_5min, load_5m,
+    prom_gauge_set(__metric_loadavg_5min, load_5m,
                    (const char *[]){ premetheus_instance_label, "load5m" });
 
-    if (unlikely(!__prom_loadavg_15min)) {
-        __prom_loadavg_15min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_15min", "System Load Average", 2, (const char *[]){ "instance", "load" }));
-    }
-    prom_gauge_set(__prom_loadavg_15min, load_15m,
+    prom_gauge_set(__metric_loadavg_15min, load_15m,
                    (const char *[]){ premetheus_instance_label, "load15m" });
 
+    prom_gauge_set(__metric_active_processes, active_processes,
+                   (const char *[]){ premetheus_instance_label, "active_processes" });
+
     return 0;
+}
+
+void fini_collector_porc_loadavg() {
+    if (likely(__pf_loadavg)) {
+        procfile_close(__pf_loadavg);
+        __pf_loadavg = NULL;
+    }
+
+    // if (likely(__metric_loadavg_1min)) {
+    //     prom_gauge_destroy(__metric_loadavg_1min);
+    //     __metric_loadavg_1min = NULL;
+    // }
+
+    // if (likely(__metric_loadavg_5min)) {
+    //     prom_gauge_destroy(__metric_loadavg_5min);
+    //     __metric_loadavg_5min = NULL;
+    // }
+
+    // if (likely(__metric_loadavg_15min)) {
+    //     prom_gauge_destroy(__metric_loadavg_15min);
+    //     __metric_loadavg_15min = NULL;
+    // }
+
+    // if (likely(__metric_active_processes)) {
+    //     prom_gauge_destroy(__metric_active_processes);
+    //     __metric_active_processes = NULL;
+    // }
+
+    debug("[PLUGIN_PROC:proc_loadavg] stopped");
 }

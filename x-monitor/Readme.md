@@ -50,6 +50,12 @@
      pidstat -r -u -t -p  `pidof x-monitor` 1 10000
      ```
 
+   - 代码统计
+
+     ```
+     find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
+     ```
+
 2. ##### proc_file
 
    - 编译
@@ -171,6 +177,20 @@
       ```
    
       时间戳转换工具：[Unix时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
+   
+   2. 查看loadavg指标
+   
+      ```
+      {__name__=~"loadavg_15min|loadavg_1min|loadavg_5min"}
+      ```
+   
+   3. 直接查看x-monitor导出的指标
+   
+      ```
+      curl 0.0.0.0:8000/metrics
+      ```
+   
+      
 
 
 

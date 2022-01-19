@@ -146,7 +146,7 @@ static void on_signal(int32_t signo, enum signal_action_mode mode) {
 
         // free config
         appconfig_destroy();
-
+        // 指标对象这里统一释放
         prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
         MHD_stop_daemon(__promhttp_daemon);
         // free log
@@ -228,8 +228,6 @@ int32_t main(int32_t argc, char *argv[]) {
         return -1;
     }
 
-    promhttp_set_active_collector_registry(NULL);
-
     // 信号初始化
     signals_block();
     signals_init();
@@ -260,6 +258,8 @@ int32_t main(int32_t argc, char *argv[]) {
             debug("xmonitor-static-routine '%s' is disabled.", routine->name);
         }
     }
+
+    promhttp_set_active_collector_registry(NULL);
 
     // 守护进程
     strncpy(pid_file, appconfig_get_str("application.pid_file", DEFAULT_PIDFILE), PID_FILENAME_MAX);

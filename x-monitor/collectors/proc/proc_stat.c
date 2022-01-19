@@ -6,8 +6,11 @@
  */
 
 // https://www.jianshu.com/p/aea52895de5e
+// https://supportcenter.checkpoint.com/supportcenter/portal?eventSubmit_doGoviewsolutiondetails=&solutionid=sk65143
 
 #include "plugin_proc.h"
+
+#include "prometheus-client-c/prom.h"
 
 #include "utils/compiler.h"
 #include "utils/consts.h"
@@ -20,6 +23,41 @@
 static const char *      __proc_stat_filename = "/proc/stat";
 static struct proc_file *__pf_stat            = NULL;
 
+static prom_gauge_t *__metric_processes_running = NULL, *__metric_processes_blocked = NULL,
+                    *__metric_interrupts_from_boot       = NULL,
+                    *__metric_context_switches_from_boot = NULL,
+                    *__metric_processes_from_boot        = NULL;
+
+int32_t init_collector_proc_stat() {
+    // 设置prom指标
+    if (unlikely(!__metric_interrupts_from_boot)) {
+        __metric_interrupts_from_boot = prom_collector_registry_must_register_metric(
+            prom_gauge_new("intr", "CPU Interrupts", 2, (const char *[]){ "host", "system" }));
+    }
+
+    if (unlikely(!__metric_context_switches_from_boot)) {
+        __metric_context_switches_from_boot =
+            prom_collector_registry_must_register_metric(prom_gauge_new(
+                "ctxt", "CPU Context Switches", 2, (const char *[]){ "host", "system" }));
+    }
+
+    if (unlikely(!__metric_processes_from_boot)) {
+        __metric_processes_from_boot = prom_collector_registry_must_register_metric(
+            prom_gauge_new("forks", "Started Processes", 2, (const char *[]){ "host", "system" }));
+    }
+
+    if (unlikely(!__metric_processes_running)) {
+        __metric_processes_running = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "processes_running", "System Processes", 2, (const char *[]){ "host", "system" }));
+    }
+
+    if (unlikely(!__metric_processes_blocked)) {
+        __metric_processes_blocked = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "processes_blocked", "System Processes", 2, (const char *[]){ "host", "system" }));
+    }
+    debug("[PLUGIN_PROC:proc_stat] init successed");
+    return 0;
+}
 
 static void do_cpu_utilization(size_t line, int32_t core_index) {
     // debug("[PLUGIN_PROC:proc_stat] /proc/stat line: %lu, core_index: %d", line, core_index);
@@ -83,11 +121,11 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
     size_t lines      = procfile_lines(__pf_stat);
     size_t line_words = 0;
 
-    uint64_t        interrupts_from_boot = 0, interrupts_per_sec = 0;
-    static uint64_t interrupts_from_boot_last = 0;
-
-    uint64_t        context_switches_from_boot = 0, context_switches_per_sec = 0;
-    static uint64_t context_switches_from_boot_last = 0;
+    uint64_t interrupts_from_boot       = 0;
+    uint64_t context_switches_from_boot = 0;
+    uint64_t processes_from_boot        = 0;
+    uint64_t processes_running          = 0;
+    uint64_t processes_blocked          = 0;
 
     debug("[PLUGIN_PROC:proc_stat] lines: %lu", lines);
 
@@ -111,41 +149,86 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
             // The first column is the total of all interrupts serviced; each subsequent column is
             // the total for that particular interrupt
             interrupts_from_boot = str2uint64_t(procfile_lineword(__pf_stat, index, 1));
-            if (likely(0 != interrupts_from_boot_last
-                       && interrupts_from_boot > interrupts_from_boot_last)) {
-                // 如果中断计数器被重置了，那么我们将重置中断计数器的计数
-                interrupts_per_sec = interrupts_from_boot - interrupts_from_boot_last;
-            }
-            interrupts_from_boot_last = interrupts_from_boot;
-            debug("[PLUGIN_PROC:proc_stat] total_interrupts: %lu, interrupts/s: %lu",
-                  interrupts_from_boot, interrupts_per_sec);
+            debug("[PLUGIN_PROC:proc_stat] interrupts_from_boot: %lu", interrupts_from_boot);
+
+            prom_gauge_set(__metric_interrupts_from_boot, (double)interrupts_from_boot,
+                           (const char *[]){ premetheus_instance_label, "CPU Interrupts" });
 
         } else if (unlikely(strncmp(row_name, "ctxt", 4) == 0)) {
             // The "ctxt" line gives the total number of context switches across all CPUs.
             context_switches_from_boot = str2uint64_t(procfile_lineword(__pf_stat, index, 1));
-            if (likely(0 != context_switches_from_boot_last
-                       && context_switches_from_boot > context_switches_from_boot_last)) {
-                context_switches_per_sec =
-                    context_switches_from_boot - context_switches_from_boot_last;
-            }
-            context_switches_from_boot_last = context_switches_from_boot;
-            debug("[PLUGIN_PROC:proc_stat] total context switches: %lu, context switches/s: %lu",
-                  context_switches_from_boot, context_switches_per_sec);
+
+            debug("[PLUGIN_PROC:proc_stat] context_switches_from_boot: %lu",
+                  context_switches_from_boot);
+
+            prom_gauge_set(__metric_context_switches_from_boot, (double)context_switches_from_boot,
+                           (const char *[]){ premetheus_instance_label, "CPU Context Switches" });
 
         } else if (unlikely(strncmp(row_name, "processes", 9) == 0)) {
             // The "processes" line gives the number of processes and threads created, which
             // includes (but is not limited to) those created by calls to the fork() and clone()
             // system calls.
-            debug("[PLUGIN_PROC:proc_stat] processes");
+            processes_from_boot = str2uint64_t(procfile_lineword(__pf_stat, index, 1));
+
+            debug("[PLUGIN_PROC:proc_stat] processes_from_boot :%lu", processes_from_boot);
+
+            prom_gauge_set(__metric_processes_from_boot, (double)processes_from_boot,
+                           (const char *[]){ premetheus_instance_label, "Started Processes" });
+
         } else if (unlikely(strncmp(row_name, "procs_running", 13) == 0)) {
             // The "procs_running" line gives the number of processes currently running on CPUs.
-            debug("[PLUGIN_PROC:proc_stat] processes running");
+            processes_running = str2uint64_t(procfile_lineword(__pf_stat, index, 1));
+
+            debug("[PLUGIN_PROC:proc_stat] processes_running %lu", processes_running);
+
+            prom_gauge_set(__metric_processes_running, (double)processes_running,
+                           (const char *[]){ premetheus_instance_label, "processes_running" });
+
         } else if (unlikely(strncmp(row_name, "procs_blocked", 13) == 0)) {
             // The "procs_blocked" line gives the number of processes currently blocked, waiting for
             // I/O to complete.
-            debug("[PLUGIN_PROC:proc_stat] processes blocked");
+            processes_blocked = str2uint64_t(procfile_lineword(__pf_stat, index, 1));
+
+            debug("[PLUGIN_PROC:proc_stat] procs_blocked: %lu", processes_blocked);
+
+            prom_gauge_set(__metric_processes_blocked, (double)processes_blocked,
+                           (const char *[]){ premetheus_instance_label, "processes_blocked" });
         }
     }
 
     return 0;
+}
+
+void fini_collector_proc_stat() {
+    if (likely(__pf_stat)) {
+        procfile_close(__pf_stat);
+        __pf_stat = NULL;
+    }
+
+    // if (likely(__metric_context_switches_from_boot)) {
+    //     prom_gauge_destroy(__metric_context_switches_from_boot);
+    //     __metric_context_switches_from_boot = NULL;
+    // }
+
+    // if (likely(__metric_interrupts_from_boot)) {
+    //     prom_gauge_destroy(__metric_interrupts_from_boot);
+    //     __metric_interrupts_from_boot = NULL;
+    // }
+
+    // if (likely(__metric_processes_from_boot)) {
+    //     prom_gauge_destroy(__metric_processes_from_boot);
+    //     __metric_processes_from_boot = NULL;
+    // }
+
+    // if (likely(__metric_processes_running)) {
+    //     prom_gauge_destroy(__metric_processes_running);
+    //     __metric_processes_running = NULL;
+    // }
+
+    // if (likely(__metric_processes_blocked)) {
+    //     prom_gauge_destroy(__metric_processes_blocked);
+    //     __metric_processes_blocked = NULL;
+    // }
+
+    debug("[PLUGIN_PROC:proc_stat] stopped");
 }

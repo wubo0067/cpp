@@ -227,19 +227,18 @@ struct mountinfo *mountinfo_read(int do_statvfs) {
         last     = mi;
         mi->next = NULL;
 
-        debug("MOUNTINFO: %d %d %u:%u root '%s', mount point '%s', mount options '%s', "
-              "filesystem '%s', mount source '%s', super options '%s'%s%s%s%s%s%s\n",
-              mi->id, mi->parent_id, mi->major, mi->minor, mi->root,  // mi->persistent_id,
-              (mi->mount_point) ? mi->mount_point : "",
-              (mi->mount_options) ? mi->mount_options : "", (mi->filesystem) ? mi->filesystem : "",
-              (mi->mount_source) ? mi->mount_source : "",
-              (mi->super_options) ? mi->super_options : "",
-              (mi->flags & MOUNTINFO_FLAG_IS_DUMMY) ? " DUMMY" : "",
-              (mi->flags & MOUNTINFO_FLAG_IS_BIND) ? " BIND" : "",
-              (mi->flags & MOUNTINFO_FLAG_IS_REMOTE) ? " REMOTE" : "",
-              (mi->flags & MOUNTINFO_FLAG_NO_STAT) ? " NOSTAT" : "",
-              (mi->flags & MOUNTINFO_FLAG_NO_SIZE) ? " NOSIZE" : "",
-              (mi->flags & MOUNTINFO_FLAG_IS_SAME_DEV) ? " SAMEDEV" : "");
+        // debug("MOUNTINFO: %d %d %u:%u root '%s', mount point '%s', mount options '%s', "
+        //       "filesystem '%s', mount source '%s', super options '%s'%s%s%s%s%s%s\n",
+        //       mi->id, mi->parent_id, mi->major, mi->minor, mi->root,  // mi->persistent_id,
+        //       (mi->mount_point) ? mi->mount_point : "",
+        //       (mi->mount_options) ? mi->mount_options : "", (mi->filesystem) ? mi->filesystem :
+        //       "", (mi->mount_source) ? mi->mount_source : "", (mi->super_options) ?
+        //       mi->super_options : "", (mi->flags & MOUNTINFO_FLAG_IS_DUMMY) ? " DUMMY" : "",
+        //       (mi->flags & MOUNTINFO_FLAG_IS_BIND) ? " BIND" : "",
+        //       (mi->flags & MOUNTINFO_FLAG_IS_REMOTE) ? " REMOTE" : "",
+        //       (mi->flags & MOUNTINFO_FLAG_NO_STAT) ? " NOSTAT" : "",
+        //       (mi->flags & MOUNTINFO_FLAG_NO_SIZE) ? " NOSIZE" : "",
+        //       (mi->flags & MOUNTINFO_FLAG_IS_SAME_DEV) ? " SAMEDEV" : "");
     }
 
     procfile_close(pf);
