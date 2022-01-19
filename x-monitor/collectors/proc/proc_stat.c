@@ -31,29 +31,29 @@ static prom_gauge_t *__metric_processes_running = NULL, *__metric_processes_bloc
 int32_t init_collector_proc_stat() {
     // 设置prom指标
     if (unlikely(!__metric_interrupts_from_boot)) {
-        __metric_interrupts_from_boot = prom_collector_registry_must_register_metric(
-            prom_gauge_new("intr", "CPU Interrupts", 2, (const char *[]){ "host", "system" }));
+        __metric_interrupts_from_boot = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "interrupts", "CPU Interrupts", 2, (const char *[]){ "host", "system" }));
     }
 
     if (unlikely(!__metric_context_switches_from_boot)) {
-        __metric_context_switches_from_boot =
-            prom_collector_registry_must_register_metric(prom_gauge_new(
-                "ctxt", "CPU Context Switches", 2, (const char *[]){ "host", "system" }));
+        __metric_context_switches_from_boot = prom_collector_registry_must_register_metric(
+            prom_gauge_new("context_switches", "CPU Context Switches", 2,
+                           (const char *[]){ "host", "system" }));
     }
 
     if (unlikely(!__metric_processes_from_boot)) {
-        __metric_processes_from_boot = prom_collector_registry_must_register_metric(
-            prom_gauge_new("forks", "Started Processes", 2, (const char *[]){ "host", "system" }));
+        __metric_processes_from_boot = prom_collector_registry_must_register_metric(prom_gauge_new(
+            "processes", "Started Processes", 2, (const char *[]){ "host", "system" }));
     }
 
     if (unlikely(!__metric_processes_running)) {
         __metric_processes_running = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "processes_running", "System Processes", 2, (const char *[]){ "host", "system" }));
+            "procs_running", "System Processes", 2, (const char *[]){ "host", "system" }));
     }
 
     if (unlikely(!__metric_processes_blocked)) {
         __metric_processes_blocked = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "processes_blocked", "System Processes", 2, (const char *[]){ "host", "system" }));
+            "procs_blocked", "System Processes", 2, (const char *[]){ "host", "system" }));
     }
     debug("[PLUGIN_PROC:proc_stat] init successed");
     return 0;
@@ -152,7 +152,8 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
             debug("[PLUGIN_PROC:proc_stat] interrupts_from_boot: %lu", interrupts_from_boot);
 
             prom_gauge_set(__metric_interrupts_from_boot, (double)interrupts_from_boot,
-                           (const char *[]){ premetheus_instance_label, "CPU Interrupts" });
+                           (const char *[]){ premetheus_instance_label,
+                                             "counts of interrupts serviced since boot time" });
 
         } else if (unlikely(strncmp(row_name, "ctxt", 4) == 0)) {
             // The "ctxt" line gives the total number of context switches across all CPUs.
@@ -162,7 +163,8 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
                   context_switches_from_boot);
 
             prom_gauge_set(__metric_context_switches_from_boot, (double)context_switches_from_boot,
-                           (const char *[]){ premetheus_instance_label, "CPU Context Switches" });
+                           (const char *[]){ premetheus_instance_label,
+                                             "number of context switches across all CPUs" });
 
         } else if (unlikely(strncmp(row_name, "processes", 9) == 0)) {
             // The "processes" line gives the number of processes and threads created, which
@@ -173,7 +175,8 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
             debug("[PLUGIN_PROC:proc_stat] processes_from_boot :%lu", processes_from_boot);
 
             prom_gauge_set(__metric_processes_from_boot, (double)processes_from_boot,
-                           (const char *[]){ premetheus_instance_label, "Started Processes" });
+                           (const char *[]){ premetheus_instance_label,
+                                             "number of processes and threads created" });
 
         } else if (unlikely(strncmp(row_name, "procs_running", 13) == 0)) {
             // The "procs_running" line gives the number of processes currently running on CPUs.
@@ -182,7 +185,8 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
             debug("[PLUGIN_PROC:proc_stat] processes_running %lu", processes_running);
 
             prom_gauge_set(__metric_processes_running, (double)processes_running,
-                           (const char *[]){ premetheus_instance_label, "processes_running" });
+                           (const char *[]){ premetheus_instance_label,
+                                             "number of processes in runnable state" });
 
         } else if (unlikely(strncmp(row_name, "procs_blocked", 13) == 0)) {
             // The "procs_blocked" line gives the number of processes currently blocked, waiting for
@@ -191,8 +195,11 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
 
             debug("[PLUGIN_PROC:proc_stat] procs_blocked: %lu", processes_blocked);
 
-            prom_gauge_set(__metric_processes_blocked, (double)processes_blocked,
-                           (const char *[]){ premetheus_instance_label, "processes_blocked" });
+            prom_gauge_set(
+                __metric_processes_blocked, (double)processes_blocked,
+                (const char *[]){
+                    premetheus_instance_label,
+                    "number of processes currently blocked, waiting for I/O to complete" });
         }
     }
 
