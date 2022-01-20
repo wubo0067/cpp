@@ -15,9 +15,10 @@
 #define MAX_NAME_LEN 128
 #define MAC_BUF_SIZE 18
 #define IP_BUF_SIZE 16
-#define PREMETHEUS_INSTANCE_LABLE_LEN 64
+#define PROM_METRIC_NAME_LEN 32
+#define PROM_METRIC_LABEL_VALUE_LEN 128
 
 extern char *DEFAULT_PLUGINS_DIR;
 extern char *DEFAULT_PIDFILE;
 
-extern char premetheus_instance_label[PREMETHEUS_INSTANCE_LABLE_LEN];
+extern char premetheus_instance_label[PROM_METRIC_LABEL_VALUE_LEN];

@@ -16,6 +16,7 @@
 #include "utils/consts.h"
 #include "utils/log.h"
 #include "utils/procfile.h"
+#include "utils/resource.h"
 #include "utils/strings.h"
 
 #include "appconfig/appconfig.h"
@@ -27,6 +28,22 @@ static prom_gauge_t *__metric_processes_running = NULL, *__metric_processes_bloc
                     *__metric_interrupts_from_boot       = NULL,
                     *__metric_context_switches_from_boot = NULL,
                     *__metric_processes_from_boot        = NULL;
+
+struct cpu_utilization_metric {
+    prom_gauge_t *metric_user_jiffies;
+    prom_gauge_t *metric_nice_jiffies;
+    prom_gauge_t *metric_system_jiffies;
+    prom_gauge_t *metric_idle_jiffies;
+    prom_gauge_t *metric_iowait_jiffies;
+    prom_gauge_t *metric_irq_jiffies;
+    prom_gauge_t *metric_softirq_jiffies;
+    prom_gauge_t *metric_steal_jiffies;
+    prom_gauge_t *metric_guest_jiffies;
+    prom_gauge_t *metric_guest_nice_jiffies;
+    char          label_cpu_val[PROM_METRIC_LABEL_VALUE_LEN];
+};
+
+static struct cpu_utilization_metric *__cpu_utilization_metrics = NULL;
 
 int32_t init_collector_proc_stat() {
     // 设置prom指标
@@ -55,6 +72,121 @@ int32_t init_collector_proc_stat() {
         __metric_processes_blocked = prom_collector_registry_must_register_metric(prom_gauge_new(
             "procs_blocked", "System Processes", 2, (const char *[]){ "host", "system" }));
     }
+
+    // 动态构建cpu.utilization指标
+    // https://man7.org/linux/man-pages/man5/proc.5.html
+    int32_t ret                               = 0;
+    char    metric_name[PROM_METRIC_NAME_LEN] = { 0 };
+
+    int32_t cpu_cores = get_system_cpus() + 1;
+    if (unlikely(!__cpu_utilization_metrics)) {
+
+        __cpu_utilization_metrics = (struct cpu_utilization_metric *)calloc(
+            cpu_cores, sizeof(struct cpu_utilization_metric));
+
+        for (int32_t index = 0; index < cpu_cores; index++) {
+            struct cpu_utilization_metric *cum = &__cpu_utilization_metrics[index];
+
+            if (0 == index) {
+                ret =
+                    snprintf(cum->label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "%s", "cpu.all");
+                cum->label_cpu_val[ret] = '\0';
+
+                cum->metric_user_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_user_jiffies", "time spent in user mode", 2,
+                                   (const char *[]){ "host", "cpu" }));
+                cum->metric_nice_jiffies =
+                    prom_collector_registry_must_register_metric(prom_gauge_new(
+                        "total_cpu_nice_jiffies", "time spent in user mode with low priority ", 2,
+                        (const char *[]){ "host", "cpu" }));
+                cum->metric_system_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_system_jiffies", "time spent in system mode", 2,
+                                   (const char *[]){ "host", "cpu" }));
+                cum->metric_idle_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_idle_jiffies", "time spent in the idle task", 2,
+                                   (const char *[]){ "host", "cpu" }));
+                cum->metric_iowait_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_iowait_jiffies", "time waiting for I/O to complete",
+                                   2, (const char *[]){ "host", "cpu" }));
+                cum->metric_irq_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_irq_jiffies", "time servicing interrupts", 2,
+                                   (const char *[]){ "host", "cpu" }));
+                cum->metric_softirq_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_softirq_jiffies", "time servicing softirqs", 2,
+                                   (const char *[]){ "host", "cpu" }));
+                cum->metric_steal_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_steal_jiffies",
+                                   "time spent in other operating system when running in a "
+                                   "virtualized environment ",
+                                   2, (const char *[]){ "host", "cpu" }));
+                cum->metric_guest_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_guest_jiffies",
+                                   "time spent running a virtual CPU for guest operating systems "
+                                   "under the control of the Linux kernel ",
+                                   2, (const char *[]){ "host", "cpu" }));
+                cum->metric_guest_nice_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_guest_nice_jiffies",
+                                   "time spent running a niced guest virtual CPU for guest "
+                                   "operating systems under the control of the Linux kernel",
+                                   2, (const char *[]){ "host", "cpu" }));
+            } else {
+                ret = snprintf(cum->label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "cpu.core%d",
+                               index - 1);
+                cum->label_cpu_val[ret] = '\0';
+
+                ret = snprintf(metric_name, PROM_METRIC_NAME_LEN - 1, "cpu_core%d_user_jiffies",
+                               index - 1);
+                metric_name[ret] = '\0';
+
+                cum->metric_user_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new(metric_name, "time spent in user mode", 2,
+                                   (const char *[]){ "host", "cpu" }));
+
+                cum->metric_nice_jiffies =
+                    prom_collector_registry_must_register_metric(prom_gauge_new(
+                        "cpu_core_nice_jiffies", "time spent in user mode with low priority", 2,
+                        (const char *[]){ "host", "cpu" }));
+
+                cum->metric_system_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_system_jiffies", "time spent in system mode", 2,
+                                   (const char *[]){ "host", "cpu" }));
+
+                cum->metric_idle_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_idle_jiffies", "time spent in the idle task", 2,
+                                   (const char *[]){ "host", "cpu" }));
+
+                cum->metric_iowait_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_iowait_jiffies", "time waiting for I/O to complete ",
+                                   2, (const char *[]){ "host", "cpu" }));
+
+                cum->metric_irq_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_irq_jiffies", "time servicing interrupts", 2,
+                                   (const char *[]){ "host", "cpu" }));
+
+                cum->metric_softirq_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_softirq_jiffies", "time servicing softirqs", 2,
+                                   (const char *[]){ "host", "cpu" }));
+
+                cum->metric_steal_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_steal_jiffies",
+                                   "time spent in other operating system when running in a "
+                                   "virtualized environment ",
+                                   2, (const char *[]){ "host", "cpu" }));
+
+                cum->metric_guest_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_guest_jiffies",
+                                   "time spent running a virtual CPU for guest operating systems "
+                                   "under the control of the Linux kernel ",
+                                   2, (const char *[]){ "host", "cpu" }));
+
+                cum->metric_guest_nice_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("cpu_core_guest_nice_jiffies",
+                                   "time spent running a niced guest virtual CPU for guest "
+                                   "operating systems under the control of the Linux kernel",
+                                   2, (const char *[]){ "host", "cpu" }));
+            }
+        }
+    }
     debug("[PLUGIN_PROC:proc_stat] init successed");
     return 0;
 }
@@ -64,6 +196,7 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
 
     // sysconf(_SC_CLK_TCK)一般地定义为jiffies(一般地等于10ms)
     // CPU时间 = user + system + nice + idle + iowait + irq + softirq
+    int32_t ret = 0;
 
     uint64_t user_jiffies,  // 用户态时间
         nice_jiffies,       // nice用户态时间
@@ -89,6 +222,41 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
 
     user_jiffies -= guest_jiffies;
     nice_jiffies -= guest_nice_jiffies;
+
+    // 设置指标
+    // int32_t cpu_metric_pos = core_index + 1;
+    // struct cpu_utilization_metric *cum            =
+    // &__cpu_utilization_metrics[cpu_metric_pos];
+
+    char label_cpu_val[PROM_METRIC_LABEL_VALUE_LEN] = { 0 };
+    if (core_index == -1) {
+        ret = snprintf(label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "%s", "cpu.all");
+        label_cpu_val[ret] = 0;
+    } else {
+        ret = snprintf(label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "cpu.core%d", core_index);
+        label_cpu_val[ret] = 0;
+    }
+
+    // prom_gauge_set(cum->metric_user_jiffies, (double)user_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_nice_jiffies, (double)nice_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_system_jiffies, (double)system_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_idle_jiffies, (double)idle_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_iowait_jiffies, (double)io_wait_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_irq_jiffies, (double)irq_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_softirq_jiffies, (double)soft_irq_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_steal_jiffies, (double)steal_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_guest_jiffies, (double)guest_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    // prom_gauge_set(cum->metric_guest_nice_jiffies, (double)guest_nice_jiffies,
+    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
 
     debug("[PLUGIN_PROC:proc_stat] core_index: %d user_jiffies: %lu, nice_jiffies: %lu, "
           "system_jiffies: %lu, "
@@ -146,8 +314,8 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
 
         } else if (unlikely(strncmp(row_name, "intr", 4) == 0)) {
             // “intr”这行给出中断的信息，第一个为自系统启动以来，发生的所有的中断的次数；然后每个数对应一个特定的中断自系统启动以来所发生的次数。
-            // The first column is the total of all interrupts serviced; each subsequent column is
-            // the total for that particular interrupt
+            // The first column is the total of all interrupts serviced; each subsequent column
+            // is the total for that particular interrupt
             interrupts_from_boot = str2uint64_t(procfile_lineword(__pf_stat, index, 1));
             debug("[PLUGIN_PROC:proc_stat] interrupts_from_boot: %lu", interrupts_from_boot);
 
@@ -189,8 +357,8 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
                                              "number of processes in runnable state" });
 
         } else if (unlikely(strncmp(row_name, "procs_blocked", 13) == 0)) {
-            // The "procs_blocked" line gives the number of processes currently blocked, waiting for
-            // I/O to complete.
+            // The "procs_blocked" line gives the number of processes currently blocked, waiting
+            // for I/O to complete.
             processes_blocked = str2uint64_t(procfile_lineword(__pf_stat, index, 1));
 
             debug("[PLUGIN_PROC:proc_stat] procs_blocked: %lu", processes_blocked);
@@ -210,6 +378,11 @@ void fini_collector_proc_stat() {
     if (likely(__pf_stat)) {
         procfile_close(__pf_stat);
         __pf_stat = NULL;
+    }
+
+    if (likely(__cpu_utilization_metrics)) {
+        free(__cpu_utilization_metrics);
+        __cpu_utilization_metrics = NULL;
     }
 
     // if (likely(__metric_context_switches_from_boot)) {

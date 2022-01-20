@@ -144,11 +144,13 @@ static void on_signal(int32_t signo, enum signal_action_mode mode) {
             }
         }
 
-        // free config
-        appconfig_destroy();
         // 指标对象这里统一释放
         prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
+        PROM_COLLECTOR_REGISTRY_DEFAULT = NULL;
         MHD_stop_daemon(__promhttp_daemon);
+
+        // free config
+        appconfig_destroy();
         // free log
         log_fini();
     } else if (E_SIGNAL_RELOADCONFIG == mode) {
@@ -218,8 +220,9 @@ int32_t main(int32_t argc, char *argv[]) {
 
     uint16_t metrics_http_export_port =
         (uint16_t)appconfig_get_member_int("application.metrics_http_exporter", "port", 8000);
-    snprintf(premetheus_instance_label, PREMETHEUS_INSTANCE_LABLE_LEN - 1, "%s:%d", get_hostname(),
-             metrics_http_export_port);
+    ret = snprintf(premetheus_instance_label, PROM_METRIC_LABEL_VALUE_LEN - 1, "%s:%d",
+                   get_hostname(), metrics_http_export_port);
+    premetheus_instance_label[ret] = '\0';
     debug("premetheus_instance_label: %s", premetheus_instance_label);
 
     ret = prom_collector_registry_default_init();
