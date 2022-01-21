@@ -29,23 +29,57 @@ static prom_gauge_t *__metric_processes_running = NULL, *__metric_processes_bloc
                     *__metric_context_switches_from_boot = NULL,
                     *__metric_processes_from_boot        = NULL;
 
+static const char *__metric_help_cpu_user_jiffies    = "time spent in user mode";
+static const char *__metric_help_cpu_nice_jiffies    = "time spent in user mode with low priority";
+static const char *__metric_help_cpu_system_jiffies  = "time spent in system mode";
+static const char *__metric_help_cpu_idle_jiffies    = "time spent in idle mode";
+static const char *__metric_help_cpu_iowait_jiffies  = "time spent waiting for IO to complete";
+static const char *__metric_help_cpu_irq_jiffies     = "time spent servicing interrupts";
+static const char *__metric_help_cpu_softirq_jiffies = "time spent servicing softirqs";
+static const char *__metric_help_cpu_steal_jiffies   = "spent executing other virtual hosts";
+static const char *__metric_help_cpu_guest_jiffies =
+    "time spent running a virtual CPU for guest OS";
+static const char *__metric_help_cpu_guest_nice_jiffies = "time spent running a niced guest";
+
 struct cpu_utilization_metric {
     prom_gauge_t *metric_user_jiffies;
+    char          metric_user_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_nice_jiffies;
+    char          metric_nice_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_system_jiffies;
+    char          metric_system_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_idle_jiffies;
+    char          metric_idle_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_iowait_jiffies;
+    char          metric_iowait_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_irq_jiffies;
+    char          metric_irq_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_softirq_jiffies;
+    char          metric_softirq_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_steal_jiffies;
+    char          metric_steal_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_guest_jiffies;
+    char          metric_guest_jiffies_name[PROM_METRIC_NAME_LEN];
+
     prom_gauge_t *metric_guest_nice_jiffies;
-    char          label_cpu_val[PROM_METRIC_LABEL_VALUE_LEN];
+    char          metric_guest_nice_jiffies_name[PROM_METRIC_NAME_LEN];
+
+    char label_cpu_val[PROM_METRIC_LABEL_VALUE_LEN];
 };
 
 static struct cpu_utilization_metric *__cpu_utilization_metrics = NULL;
 
 int32_t init_collector_proc_stat() {
+    int32_t ret = 0;
+
     // 设置prom指标
     if (unlikely(!__metric_interrupts_from_boot)) {
         __metric_interrupts_from_boot = prom_collector_registry_must_register_metric(prom_gauge_new(
@@ -75,8 +109,6 @@ int32_t init_collector_proc_stat() {
 
     // 动态构建cpu.utilization指标
     // https://man7.org/linux/man-pages/man5/proc.5.html
-    int32_t ret                               = 0;
-    char    metric_name[PROM_METRIC_NAME_LEN] = { 0 };
 
     int32_t cpu_cores = get_system_cpus() + 1;
     if (unlikely(!__cpu_utilization_metrics)) {
@@ -93,97 +125,141 @@ int32_t init_collector_proc_stat() {
                 cum->label_cpu_val[ret] = '\0';
 
                 cum->metric_user_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_user_jiffies", "time spent in user mode", 2,
+                    prom_gauge_new("total_cpu_user_jiffies", __metric_help_cpu_user_jiffies, 2,
                                    (const char *[]){ "host", "cpu" }));
-                cum->metric_nice_jiffies =
-                    prom_collector_registry_must_register_metric(prom_gauge_new(
-                        "total_cpu_nice_jiffies", "time spent in user mode with low priority ", 2,
-                        (const char *[]){ "host", "cpu" }));
+
+                cum->metric_nice_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new("total_cpu_nice_jiffies", __metric_help_cpu_nice_jiffies, 2,
+                                   (const char *[]){ "host", "cpu" }));
+
                 cum->metric_system_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_system_jiffies", "time spent in system mode", 2,
+                    prom_gauge_new("total_cpu_system_jiffies", __metric_help_cpu_system_jiffies, 2,
                                    (const char *[]){ "host", "cpu" }));
+
                 cum->metric_idle_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_idle_jiffies", "time spent in the idle task", 2,
+                    prom_gauge_new("total_cpu_idle_jiffies", __metric_help_cpu_idle_jiffies, 2,
                                    (const char *[]){ "host", "cpu" }));
+
                 cum->metric_iowait_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_iowait_jiffies", "time waiting for I/O to complete",
-                                   2, (const char *[]){ "host", "cpu" }));
+                    prom_gauge_new("total_cpu_iowait_jiffies", __metric_help_cpu_iowait_jiffies, 2,
+                                   (const char *[]){ "host", "cpu" }));
+
                 cum->metric_irq_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_irq_jiffies", "time servicing interrupts", 2,
+                    prom_gauge_new("total_cpu_irq_jiffies", __metric_help_cpu_irq_jiffies, 2,
                                    (const char *[]){ "host", "cpu" }));
+
                 cum->metric_softirq_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_softirq_jiffies", "time servicing softirqs", 2,
-                                   (const char *[]){ "host", "cpu" }));
+                    prom_gauge_new("total_cpu_softirq_jiffies", __metric_help_cpu_softirq_jiffies,
+                                   2, (const char *[]){ "host", "cpu" }));
+
                 cum->metric_steal_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_steal_jiffies",
-                                   "time spent in other operating system when running in a "
-                                   "virtualized environment ",
-                                   2, (const char *[]){ "host", "cpu" }));
+                    prom_gauge_new("total_cpu_steal_jiffies", __metric_help_cpu_steal_jiffies, 2,
+                                   (const char *[]){ "host", "cpu" }));
+
                 cum->metric_guest_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_guest_jiffies",
-                                   "time spent running a virtual CPU for guest operating systems "
-                                   "under the control of the Linux kernel ",
-                                   2, (const char *[]){ "host", "cpu" }));
-                cum->metric_guest_nice_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("total_cpu_guest_nice_jiffies",
-                                   "time spent running a niced guest virtual CPU for guest "
-                                   "operating systems under the control of the Linux kernel",
-                                   2, (const char *[]){ "host", "cpu" }));
+                    prom_gauge_new("total_cpu_guest_jiffies", __metric_help_cpu_guest_jiffies, 2,
+                                   (const char *[]){ "host", "cpu" }));
+
+                cum->metric_guest_nice_jiffies =
+                    prom_collector_registry_must_register_metric(prom_gauge_new(
+                        "total_cpu_guest_nice_jiffies", __metric_help_cpu_guest_nice_jiffies, 2,
+                        (const char *[]){ "host", "cpu" }));
             } else {
+                int32_t core_id = index - 1;
                 ret = snprintf(cum->label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "cpu.core%d",
-                               index - 1);
+                               core_id);
                 cum->label_cpu_val[ret] = '\0';
 
-                ret = snprintf(metric_name, PROM_METRIC_NAME_LEN - 1, "cpu_core%d_user_jiffies",
-                               index - 1);
-                metric_name[ret] = '\0';
-
+                snprintf(cum->metric_user_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_user_jiffies", core_id);
                 cum->metric_user_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new(metric_name, "time spent in user mode", 2,
+                    prom_gauge_new(cum->metric_user_jiffies_name, __metric_help_cpu_user_jiffies, 2,
                                    (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_user_jiffies_name);
 
-                cum->metric_nice_jiffies =
+                //--------------------------------------------------------------------------------
+                snprintf(cum->metric_nice_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_nice_jiffies", core_id);
+                cum->metric_nice_jiffies = prom_collector_registry_must_register_metric(
+                    prom_gauge_new(cum->metric_nice_jiffies_name, __metric_help_cpu_nice_jiffies, 2,
+                                   (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_nice_jiffies_name);
+
+                //--------------------------------------------------------------------------------
+
+                snprintf(cum->metric_system_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_system_jiffies", core_id);
+                cum->metric_system_jiffies =
                     prom_collector_registry_must_register_metric(prom_gauge_new(
-                        "cpu_core_nice_jiffies", "time spent in user mode with low priority", 2,
+                        cum->metric_system_jiffies_name, __metric_help_cpu_system_jiffies, 2,
                         (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_system_jiffies_name);
 
-                cum->metric_system_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_system_jiffies", "time spent in system mode", 2,
-                                   (const char *[]){ "host", "cpu" }));
+                //--------------------------------------------------------------------------------
 
+                snprintf(cum->metric_idle_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_idle_jiffies", core_id);
                 cum->metric_idle_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_idle_jiffies", "time spent in the idle task", 2,
+                    prom_gauge_new(cum->metric_idle_jiffies_name, __metric_help_cpu_idle_jiffies, 2,
                                    (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_idle_jiffies_name);
 
-                cum->metric_iowait_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_iowait_jiffies", "time waiting for I/O to complete ",
-                                   2, (const char *[]){ "host", "cpu" }));
+                //--------------------------------------------------------------------------------
 
+                snprintf(cum->metric_iowait_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_iowait_jiffies", core_id);
+                cum->metric_iowait_jiffies =
+                    prom_collector_registry_must_register_metric(prom_gauge_new(
+                        cum->metric_iowait_jiffies_name, __metric_help_cpu_iowait_jiffies, 2,
+                        (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_idle_jiffies_name);
+
+                //--------------------------------------------------------------------------------
+
+                snprintf(cum->metric_irq_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_irq_jiffies", core_id);
                 cum->metric_irq_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_irq_jiffies", "time servicing interrupts", 2,
+                    prom_gauge_new(cum->metric_irq_jiffies_name, __metric_help_cpu_irq_jiffies, 2,
                                    (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_irq_jiffies_name);
 
-                cum->metric_softirq_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_softirq_jiffies", "time servicing softirqs", 2,
-                                   (const char *[]){ "host", "cpu" }));
+                //--------------------------------------------------------------------------------
 
+                snprintf(cum->metric_softirq_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_softirq_jiffies", core_id);
+                cum->metric_softirq_jiffies =
+                    prom_collector_registry_must_register_metric(prom_gauge_new(
+                        cum->metric_softirq_jiffies_name, __metric_help_cpu_softirq_jiffies, 2,
+                        (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_softirq_jiffies_name);
+
+                //--------------------------------------------------------------------------------
+
+                snprintf(cum->metric_steal_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_steal_jiffies", core_id);
                 cum->metric_steal_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_steal_jiffies",
-                                   "time spent in other operating system when running in a "
-                                   "virtualized environment ",
+                    prom_gauge_new(cum->metric_steal_jiffies_name, __metric_help_cpu_steal_jiffies,
                                    2, (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_steal_jiffies_name);
 
+                //--------------------------------------------------------------------------------
+
+                snprintf(cum->metric_guest_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_guest_jiffies", core_id);
                 cum->metric_guest_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_guest_jiffies",
-                                   "time spent running a virtual CPU for guest operating systems "
-                                   "under the control of the Linux kernel ",
+                    prom_gauge_new(cum->metric_guest_jiffies_name, __metric_help_cpu_guest_jiffies,
                                    2, (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_guest_jiffies_name);
 
-                cum->metric_guest_nice_jiffies = prom_collector_registry_must_register_metric(
-                    prom_gauge_new("cpu_core_guest_nice_jiffies",
-                                   "time spent running a niced guest virtual CPU for guest "
-                                   "operating systems under the control of the Linux kernel",
-                                   2, (const char *[]){ "host", "cpu" }));
+                //--------------------------------------------------------------------------------
+
+                snprintf(cum->metric_guest_nice_jiffies_name, PROM_METRIC_NAME_LEN - 1,
+                         "cpu_core%d_guest_nice_jiffies", core_id);
+                cum->metric_guest_nice_jiffies =
+                    prom_collector_registry_must_register_metric(prom_gauge_new(
+                        cum->metric_guest_nice_jiffies_name, __metric_help_cpu_guest_nice_jiffies,
+                        2, (const char *[]){ "host", "cpu" }));
+                debug("cpu.core:%d: '%s'", core_id, cum->metric_guest_nice_jiffies_name);
             }
         }
     }
@@ -224,39 +300,30 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
     nice_jiffies -= guest_nice_jiffies;
 
     // 设置指标
-    // int32_t cpu_metric_pos = core_index + 1;
-    // struct cpu_utilization_metric *cum            =
-    // &__cpu_utilization_metrics[cpu_metric_pos];
+    int32_t cpu_metric_pos = core_index + 1;
 
-    char label_cpu_val[PROM_METRIC_LABEL_VALUE_LEN] = { 0 };
-    if (core_index == -1) {
-        ret = snprintf(label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "%s", "cpu.all");
-        label_cpu_val[ret] = 0;
-    } else {
-        ret = snprintf(label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "cpu.core%d", core_index);
-        label_cpu_val[ret] = 0;
-    }
+    struct cpu_utilization_metric *cum = &__cpu_utilization_metrics[cpu_metric_pos];
 
-    // prom_gauge_set(cum->metric_user_jiffies, (double)user_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_nice_jiffies, (double)nice_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_system_jiffies, (double)system_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_idle_jiffies, (double)idle_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_iowait_jiffies, (double)io_wait_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_irq_jiffies, (double)irq_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_softirq_jiffies, (double)soft_irq_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_steal_jiffies, (double)steal_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_guest_jiffies, (double)guest_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
-    // prom_gauge_set(cum->metric_guest_nice_jiffies, (double)guest_nice_jiffies,
-    //                (const char *[]){ premetheus_instance_label, label_cpu_val });
+    prom_gauge_set(cum->metric_user_jiffies, (double)user_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_nice_jiffies, (double)nice_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_system_jiffies, (double)system_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_idle_jiffies, (double)idle_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_iowait_jiffies, (double)io_wait_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_irq_jiffies, (double)irq_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_softirq_jiffies, (double)soft_irq_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_steal_jiffies, (double)steal_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_guest_jiffies, (double)guest_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
+    prom_gauge_set(cum->metric_guest_nice_jiffies, (double)guest_nice_jiffies,
+                   (const char *[]){ premetheus_instance_label, cum->label_cpu_val });
 
     debug("[PLUGIN_PROC:proc_stat] core_index: %d user_jiffies: %lu, nice_jiffies: %lu, "
           "system_jiffies: %lu, "
