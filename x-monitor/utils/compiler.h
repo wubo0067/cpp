@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-14 16:33:29
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-25 10:35:19
+ * @Last Modified time: 2022-01-24 15:32:20
  */
 
 #pragma once
@@ -41,4 +41,8 @@
 
 #ifndef __concat
 #define __concat(a, b) a##b
+#endif
+
+#if !defined ROUNDUP
+#define ROUNDUP(X, Y) (((X) + ((Y)-1)) & ~((Y)-1))
 #endif

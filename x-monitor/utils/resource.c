@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-11-03 11:51:34
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-13 16:53:51
+ * @Last Modified time: 2022-01-24 17:19:10
  */
 
 #include "common.h"
@@ -50,7 +50,7 @@ int32_t get_system_cpus() {
 
     __processors = 0;
 
-    for (int32_t index = 0; index < procfile_lines(pf_stat); index++) {
+    for (size_t index = 0; index < procfile_lines(pf_stat); index++) {
         if (!procfile_linewords(pf_stat, index)) {
             continue;
         }

@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-18 11:38:31
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-18 14:36:44
+ * @Last Modified time: 2022-01-24 17:26:50
  */
 
 #include "common.h"
@@ -11,15 +11,15 @@
 
 static char __hostname[HOST_NAME_MAX + 1] = { 0 };
 
-static const char *__def_ipaddr  = "0.0.0.0";
-static const char *__def_macaddr = "00:00:00:00:00:00";
+static const char *__def_ipaddr   = "0.0.0.0";
+static const char *__def_macaddr  = "00:00:00:00:00:00";
+static const char *__def_hostname = "unknown";
 
 const char *get_hostname() {
     if (unlikely(0 == __hostname[0])) {
-        if (unlikely(0 == gethostname(__hostname, HOST_NAME_MAX))) {
-            __hostname[HOST_NAME_MAX] = '\0';
-        } else {
-            strncpy(__hostname, "unknown", 7);
+        if (unlikely(0 != gethostname(__hostname, HOST_NAME_MAX))) {
+            strncpy(__hostname, __def_hostname, 7);
+            __hostname[7] = '\0';
         }
     }
     return __hostname;
