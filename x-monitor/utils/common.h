@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-15 10:52:05
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-25 10:36:18
+ * @Last Modified time: 2022-01-24 17:57:18
  */
 
 #pragma once
@@ -33,6 +33,7 @@ extern "C" {
 #include <signal.h>
 #include <spawn.h>
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>

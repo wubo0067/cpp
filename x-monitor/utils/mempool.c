@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-24 14:47:41
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-24 17:32:56
+ * @Last Modified time: 2022-01-24 19:02:15
  */
 
 #include "compiler.h"
@@ -72,10 +72,6 @@ struct xm_mempool_s *xm_mempool_init(uint32_t unit_size, int32_t init_mem_unit_c
 
     // unit_size必须大于sizeof(int32_t)，这里存放下一个free unit的下标
     // 这个空间是复用的，空闲时记录空闲下标，分配时全部可用
-    if (unlikely(unit_size < sizeof(int32_t))) {
-        pool->unit_size = sizeof(int32_t);
-    }
-
     /* round up to a 'XM_ALIGNMENT_SIZE' alignment */
     pool->unit_size            = ROUNDUP(unit_size, XM_ALIGNMENT_SIZE);
     pool->curr_mem_block_count = 0;
@@ -105,6 +101,7 @@ void xm_mempool_fini(struct xm_mempool_s *pool) {
         free(temp);
     }
 
+    pthread_spin_destroy(&pool->lock);
     free(pool);
     pool = NULL;
 
@@ -112,7 +109,63 @@ void xm_mempool_fini(struct xm_mempool_s *pool) {
 }
 
 void *xm_mempool_malloc(struct xm_mempool_s *pool) {
-    return NULL;
+    struct xm_mempool_block_s *block   = NULL;
+    void *                     ret_ptr = NULL;
+
+    if (unlikely(NULL == pool)) {
+        error("pool is NULL");
+        return NULL;
+    }
+
+    pthread_spin_lock(&pool->lock);
+
+    block = pool->root;
+
+    if (unlikely(NULL == block)) {
+        block = xm_memblock_create(pool->unit_size, pool->init_mem_unit_count);
+        if (unlikely(NULL == block)) {
+            pthread_spin_unlock(&pool->lock);
+            error("xm_memblock_create failed");
+            return NULL;
+        }
+        pool->root = block;
+        pool->curr_mem_block_count++;
+        ret_ptr = (void *)block->data;
+        pthread_spin_unlock(&pool->lock);
+        return ret_ptr;
+    }
+
+    // 查找一个有空闲unit的block
+    while (block && block->free_unit_count == 0) {
+        block = block->next;
+    }
+
+    if (likely(block)) {
+        // 找到一个空闲unit在block中
+        uint32_t curr_free_pos = block->free_unit_pos;
+        ret_ptr                = (void *)((char *)block->data + curr_free_pos * pool->unit_size);
+        block->free_unit_pos   = *((int32_t *)ret_ptr);
+        block->free_unit_count--;
+        debug("alloc_unit_pos: %d, next_alloc_unit_pos: %d block->free_unit_count: %d",
+              curr_free_pos, block->free_unit_pos, block->free_unit_count);
+        pthread_spin_unlock(&pool->lock);
+        return ret_ptr;
+    }
+
+    // 没有空闲unit的block，创建新的block
+    block = xm_memblock_create(pool->unit_size, pool->grow_mem_unit_count);
+    if (unlikely(NULL == block)) {
+        pthread_spin_unlock(&pool->lock);
+        error("xm_memblock_create failed");
+        return NULL;
+    }
+    // 加入到链表头部
+    block->next = pool->root;
+    pool->root  = block;
+    pool->curr_mem_block_count++;
+    ret_ptr = (void *)block->data;
+    pthread_spin_unlock(&pool->lock);
+    return ret_ptr;
 }
 
 int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
