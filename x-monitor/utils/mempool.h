@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-24 10:28:21
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-24 16:40:46
+ * @Last Modified time: 2022-01-25 11:24:51
  */
 
 #pragma once
@@ -28,9 +28,9 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool);
 
 int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree);
 
-void print_mempool_info(struct xm_mempool_s *pool);
+void xm_print_mempool_info(struct xm_mempool_s *pool);
 
-void print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *pblock);
+void xm_print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *pblock);
 
 #define XM_MEMPOOL_INIT(type)                                             \
     (xm_mempool_init(sizeof(struct type), XM_DEFAULT_INIT_MEM_UNIT_COUNT, \

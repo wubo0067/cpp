@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-24 14:47:41
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-24 19:13:42
+ * @Last Modified time: 2022-01-25 11:30:06
  */
 
 #include "compiler.h"
@@ -40,10 +40,11 @@ static struct xm_mempool_block_s *xm_memblock_create(uint32_t unit_size, int32_t
         return NULL;
     }
 
-    block->next            = NULL;
-    block->free_unit_pos   = 0;
+    block->next = NULL;
+    // 只有malloc调用该函数，第一个unit已经分配出去了，所以free_unit_pos = 1, free_unit_count也减一
+    block->free_unit_pos   = 1;
+    block->free_unit_count = unit_count - 1;
     block->block_size      = unit_size * unit_count;
-    block->free_unit_count = unit_count;
 
     char *offset = block->data;
     for (int32_t i = 1; i < unit_count + 1; i++) {
@@ -235,7 +236,7 @@ int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
     return 0;
 }
 
-void print_mempool_info(struct xm_mempool_s *pool) {
+void xm_print_mempool_info(struct xm_mempool_s *pool) {
     struct xm_mempool_block_s *block = NULL;
     int32_t                    i     = 0;
 
@@ -266,7 +267,7 @@ void print_mempool_info(struct xm_mempool_s *pool) {
     pthread_spin_unlock(&pool->lock);
 }
 
-void print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *ptr) {
+void xm_print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *ptr) {
     struct xm_mempool_block_s *block = NULL;
 
     if (unlikely(NULL == pool)) {
