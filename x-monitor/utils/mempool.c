@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-24 14:47:41
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-24 19:02:15
+ * @Last Modified time: 2022-01-24 19:13:42
  */
 
 #include "compiler.h"
@@ -46,10 +46,11 @@ static struct xm_mempool_block_s *xm_memblock_create(uint32_t unit_size, int32_t
     block->free_unit_count = unit_count;
 
     char *offset = block->data;
-    for (int32_t i = 1; i < unit_count; i++) {
+    for (int32_t i = 1; i < unit_count + 1; i++) {
         // example, unit[0].next_freepos = 1
         *((int32_t *)offset) = i;
         offset += unit_size;
+        debug("set mem block unit[%d].next_freepos = %d", i - 1, i);
     }
     return block;
 }
@@ -169,11 +170,137 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
 }
 
 int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
+    struct xm_mempool_block_s *block      = NULL;
+    struct xm_mempool_block_s *temp_block = NULL;
+
+    if (unlikely(NULL == pool || NULL == pfree)) {
+        error("pool or pfree is NULL");
+        return -1;
+    }
+
+    pthread_spin_lock(&pool->lock);
+
+    block = pool->root;
+
+    // 根据pfree找到对应的block
+    while (block
+           && (block->data > ((char *)pfree)
+               || ((char *)pfree) >= (char *)(block->data + block->block_size))) {
+        temp_block = block;
+        block      = block->next;
+    }
+
+    if (unlikely(NULL == block)) {
+        error("pfree: %p is not in the mempool", pfree);
+        pthread_spin_unlock(&pool->lock);
+        return -1;
+    }
+
+    uint32_t before_recycling_free_unit_count = block->free_unit_count;
+    // block开始回收
+    block->free_unit_count++;
+    // 设置pfree的next_free_unit_pos
+    *((uint32_t *)pfree) = block->free_unit_pos;
+    // 设置block的free_unit_pos为pfree的下标
+    block->free_unit_pos = ((char *)pfree - block->data) / (pool->unit_size);
+    debug("before_recycling_free_unit_count: %u, pfree.free_unit_pos: %u block.free_unit_count: "
+          "%u, block.free_unit_pos: %u",
+          before_recycling_free_unit_count, *((int32_t *)pfree), block->free_unit_count,
+          block->free_unit_pos);
+
+    // 判断是否回收block
+    if (block->block_size == block->free_unit_count * pool->unit_size) {
+        // 如果block完全空闲
+        if (pool->curr_mem_block_count > 1 && pool->root->free_unit_count) {
+            // 如果pool有多个block，且第一个block有空闲unit
+            if (block == pool->root) {
+                // 如果要回收的block是第一个block
+                pool->root = block->next;
+            } else {
+                temp_block->next = block->next;
+            }
+            free(block);
+            pool->curr_mem_block_count--;
+        }
+    } else if (pool->root->free_unit_count == 0) {
+        // 如果pool的第一个block没有空闲unit，这把这个block放到pool的第一个block
+        temp_block->next = block->next;
+        block->next      = pool->root;
+        pool->root       = block;
+    }
+
+    pfree = NULL;
+
+    pthread_spin_unlock(&pool->lock);
     return 0;
 }
 
 void print_mempool_info(struct xm_mempool_s *pool) {
+    struct xm_mempool_block_s *block = NULL;
+    int32_t                    i     = 0;
+
+    if (unlikely(NULL == pool)) {
+        error("pool is NULL");
+        return;
+    }
+
+    pthread_spin_lock(&pool->lock);
+    debug("-----------------mempool info-----------------");
+    debug("*\tunit_size = %u\n*\tcurr_mem_block_count = %d\n*\tinit_mem_unit_count = %d\n*\t"
+          "grow_mem_unit_count = %d",
+          pool->unit_size, pool->curr_mem_block_count, pool->init_mem_unit_count,
+          pool->grow_mem_unit_count);
+    debug("-----------------------------------------------");
+
+    block = pool->root;
+    if (likely(NULL != block)) {
+        for (; block != NULL; block = block->next) {
+            debug("-----------------mempool block info[%d]-----------------", i++);
+            debug(
+                "*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = %u\n*\tdata = %p",
+                block->block_size, block->free_unit_count, block->free_unit_pos, block->data);
+            debug("-----------------------------------------------");
+        }
+    }
+
+    pthread_spin_unlock(&pool->lock);
 }
 
-void print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *pblock) {
+void print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *ptr) {
+    struct xm_mempool_block_s *block = NULL;
+
+    if (unlikely(NULL == pool)) {
+        error("pool is NULL");
+        return;
+    }
+
+    if (unlikely(NULL == ptr)) {
+        error("pblock is NULL");
+        return;
+    }
+
+    pthread_spin_lock(&pool->lock);
+
+    block = pool->root;
+
+    // 根据pfree找到对应的block
+    while (block
+           && (block->data > ((char *)ptr)
+               || ((char *)ptr) >= (char *)(block->data + block->block_size))) {
+        block = block->next;
+    }
+
+    if (unlikely(NULL == block)) {
+        error("pblock: %p is not in the mempool", ptr);
+        pthread_spin_unlock(&pool->lock);
+        return;
+    } else {
+        debug("### ptr[%p] in memblock[%p] ###", ptr, block->data);
+        debug("-----------------mempool block info-----------------");
+        debug("*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = %u\n*\tdata = %p",
+              block->block_size, block->free_unit_count, block->free_unit_pos, block->data);
+        debug("-----------------------------------------------");
+    }
+
+    pthread_spin_unlock(&pool->lock);
 }
