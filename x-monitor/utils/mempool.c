@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-01-24 14:47:41
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-25 11:30:06
+ * @Last Modified time: 2022-01-25 17:31:23
  */
 
 #include "compiler.h"
@@ -130,6 +130,8 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
             error("xm_memblock_create failed");
             return NULL;
         }
+        debug("alloc_unit_pos: 0, next_alloc_unit_pos: %d block->free_unit_count: %d",
+              block->free_unit_pos, block->free_unit_count);
         pool->root = block;
         pool->curr_mem_block_count++;
         ret_ptr = (void *)block->data;
@@ -155,12 +157,15 @@ void *xm_mempool_malloc(struct xm_mempool_s *pool) {
     }
 
     // 没有空闲unit的block，创建新的block
+    debug("no free unit in block, create new block");
     block = xm_memblock_create(pool->unit_size, pool->grow_mem_unit_count);
     if (unlikely(NULL == block)) {
         pthread_spin_unlock(&pool->lock);
         error("xm_memblock_create failed");
         return NULL;
     }
+    debug("alloc_unit_pos: 0, next_alloc_unit_pos: %d block->free_unit_count: %d",
+          block->free_unit_pos, block->free_unit_count);
     // 加入到链表头部
     block->next = pool->root;
     pool->root  = block;
