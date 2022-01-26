@@ -26,36 +26,35 @@
    - 编译
 
      ```
-     
      cmake3 ../ -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINKING=1 -DSTATIC_LIBC=1
      make x-monitor VERBOSE=1
      ```
-
+     
    - 运行
-
+   
      ```
      bin/x-monitor -c ../env/config/x-monitor.cfg
      ```
-
+   
    - 停止
-
+   
      ```
      kill -15 `pidof x-monitor`
      ```
-
+   
    - 查看状态
-
+   
      ```
-     top -d 1 -p  `pidof x-monitor`
+     top -d 1 -p `pidof x-monitor`
      pidstat -r -u -t -p  `pidof x-monitor` 1 10000
      ```
-
+   
    - 代码统计
-
+   
      ```
      find . -path ./extra -prune -o  -name "*.[ch]"|xargs wc -l
      ```
-
+   
 2. ##### proc_file
 
    - 编译

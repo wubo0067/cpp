@@ -74,6 +74,25 @@ static void __test_malloc_3(struct xm_mempool_s *xmp) {
     xm_print_mempool_info(xmp);
 }
 
+static void __test_malloc_4(struct xm_mempool_s *xmp) {
+    void *  mems[13];
+    int32_t i = 0;
+
+    debug("^^^^mempool malloc 13 units");
+    for (i = 0; i < 13; i++) {
+        mems[i] = xm_mempool_malloc(xmp);
+    }
+
+    xm_print_mempool_info(xmp);
+
+    debug("^^^^mempool free 11-13 units");
+    xm_mempool_free(xmp, mems[10]);
+    xm_mempool_free(xmp, mems[11]);
+    xm_mempool_free(xmp, mems[12]);
+
+    xm_print_mempool_info(xmp);
+}
+
 int32_t main(int32_t argc, char **argv) {
     if (log_init("../cli/mempool_test/log.cfg", "mempool_test") != 0) {
         fprintf(stderr, "log init failed\n");
@@ -90,7 +109,9 @@ int32_t main(int32_t argc, char **argv) {
 
     //__test_malloc_3(xmp);
 
-    __test_malloc_2(xmp);
+    // __test_malloc_2(xmp);
+
+    __test_malloc_4(xmp);
 
     xm_mempool_fini(xmp);
 

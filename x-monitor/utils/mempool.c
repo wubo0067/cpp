@@ -225,6 +225,7 @@ int32_t xm_mempool_free(struct xm_mempool_s *pool, void *pfree) {
             } else {
                 temp_block->next = block->next;
             }
+            debug("recycling block: %p", block);
             free(block);
             pool->curr_mem_block_count--;
         }
@@ -262,9 +263,10 @@ void xm_print_mempool_info(struct xm_mempool_s *pool) {
     if (likely(NULL != block)) {
         for (; block != NULL; block = block->next) {
             debug("-----------------mempool block info[%d]-----------------", i++);
-            debug(
-                "*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = %u\n*\tdata = %p",
-                block->block_size, block->free_unit_count, block->free_unit_pos, block->data);
+            debug("*\tblock = %p\n*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = "
+                  "%u\n*\tdata = %p",
+                  block, block->block_size, block->free_unit_count, block->free_unit_pos,
+                  block->data);
             debug("-----------------------------------------------");
         }
     }
@@ -303,8 +305,9 @@ void xm_print_mempool_block_info_by_pointer(struct xm_mempool_s *pool, void *ptr
     } else {
         debug("### ptr[%p] in memblock[%p] ###", ptr, block->data);
         debug("-----------------mempool block info-----------------");
-        debug("*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = %u\n*\tdata = %p",
-              block->block_size, block->free_unit_count, block->free_unit_pos, block->data);
+        debug("*\tblock = %p\n*\tblock_size = %u\n*\tfree_unit_count = %u\n*\tfree_unit_pos = "
+              "%u\n*\tdata = %p",
+              block, block->block_size, block->free_unit_count, block->free_unit_pos, block->data);
         debug("-----------------------------------------------");
     }
 
