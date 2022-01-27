@@ -16,5 +16,5 @@ add_custom_target(gen_cachestat_skel
 				VERBATIM
 				)
 
-target_link_libraries(cachestat_cli xmonitor-utils libbpf.a elf pthread z m) 
+target_link_libraries(cachestat_cli xmonitor-utils libzlog.a libbpf.a elf pthread z m) 
 add_dependencies(cachestat_cli gen_cachestat_skel)               
