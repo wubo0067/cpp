@@ -64,83 +64,83 @@ static usec_t __next_pressure_dt = 0;
 int32_t init_collector_proc_pressure() {
     __metric_psi_cpu_loadavg_10secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_cpu_loadavg_10secs", "System psi cpu loadavg 10secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_cpu_loadavg_60secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_cpu_loadavg_60secs", "System psi cpu loadavg 60secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_cpu_loadavg_300secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_cpu_loadavg_300secs", "System psi cpu loadavg 300secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_cpu_total_stall_msecs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_cpu_total_stall_msecs", "System psi cpu total absolute stall time", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_some_loadavg_10secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_some_loadavg_10secs", "System psi io some loadavg 10secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_some_loadavg_60secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_some_loadavg_60secs", "System psi io some loadavg 60secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_some_loadavg_300secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_some_loadavg_300secs", "System psi io some loadavg 300secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_some_total_stall_msecs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_some_total_stall_msecs", "System psi io some total stall time", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_full_loadavg_10secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_full_loadavg_10secs", "System psi io full loadavg 10secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_full_loadavg_60secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_full_loadavg_60secs", "System psi io full loadavg 60secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_full_loadavg_300secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_full_loadavg_300secs", "System psi io full loadavg 300secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_io_full_total_stall_msecs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_io_full_total_stall_msecs", "System psi io full total stall time", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_some_loadavg_10secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_some_loadavg_10secs", "System psi mem some loadavg 10secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_some_loadavg_60secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_some_loadavg_60secs", "System psi mem some loadavg 60secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_some_loadavg_300secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_some_loadavg_300secs", "System psi mem some loadavg 300secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_some_total_stall_msecs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_some_total_stall_msecs", "System psi mem some total stall time", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_full_loadavg_10secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_full_loadavg_10secs", "System psi mem full loadavg 10secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_full_loadavg_60secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_full_loadavg_60secs", "System psi mem full loadavg 60secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_full_loadavg_300secs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_full_loadavg_300secs", "System psi mem full loadavg 300secs", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     __metric_psi_mem_full_total_stall_msecs = prom_collector_registry_must_register_metric(
         prom_gauge_new("psi_mem_full_total_stall_msecs", "System psi mem full total stall time", 2,
-                       (const char *[]){ "host", "family" }));
+                       (const char *[]){ "host", "psi" }));
 
     debug("[PLUGIN_PROC:proc_pressure] init successed");
 
@@ -169,15 +169,17 @@ static void __collector_proc_psi_cpu(const char *config_path) {
         error("[PLUGIN_PROC:proc_pressure] %s has no lines", psi_cpu);
         return;
     }
+    static double   psi_cpu_10secs, psi_cpu_60secs, psi_cpu_300secs;
+    static uint64_t psi_cpu_total_stall_msecs;
 
-    double   psi_cpu_10secs           = strtod(procfile_lineword(__pf_psi_cpu, 0, 2), NULL);
-    double   psi_cpu_60secs           = strtod(procfile_lineword(__pf_psi_cpu, 0, 4), NULL);
-    double   psi_cpu_300secs          = strtod(procfile_lineword(__pf_psi_cpu, 0, 6), NULL);
-    uint64_t psi_cpu_total_stall_mecs = str2uint64_t(procfile_lineword(__pf_psi_cpu, 0, 8));
+    psi_cpu_10secs            = strtod(procfile_lineword(__pf_psi_cpu, 0, 2), NULL);
+    psi_cpu_60secs            = strtod(procfile_lineword(__pf_psi_cpu, 0, 4), NULL);
+    psi_cpu_300secs           = strtod(procfile_lineword(__pf_psi_cpu, 0, 6), NULL);
+    psi_cpu_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_cpu, 0, 8));
 
     debug("[PLUGIN_PROC:proc_pressure] psi_cpu_10secs: %.2f, psi_cpu_60secs: %.2f, "
           "psi_cpu_300secs: %.2f, psi_cpu_total_stall_mecs: %lu",
-          psi_cpu_10secs, psi_cpu_60secs, psi_cpu_300secs, psi_cpu_total_stall_mecs);
+          psi_cpu_10secs, psi_cpu_60secs, psi_cpu_300secs, psi_cpu_total_stall_msecs);
 
     prom_gauge_set(__metric_psi_cpu_loadavg_10secs, psi_cpu_10secs,
                    (const char *[]){ premetheus_instance_label, "cpu" });
@@ -188,7 +190,7 @@ static void __collector_proc_psi_cpu(const char *config_path) {
     prom_gauge_set(__metric_psi_cpu_loadavg_300secs, psi_cpu_300secs,
                    (const char *[]){ premetheus_instance_label, "cpu" });
 
-    prom_gauge_set(__metric_psi_cpu_total_stall_msecs, psi_cpu_total_stall_mecs,
+    prom_gauge_set(__metric_psi_cpu_total_stall_msecs, psi_cpu_total_stall_msecs,
                    (const char *[]){ premetheus_instance_label, "cpu" });
 }
 
@@ -215,11 +217,14 @@ static void __collector_proc_psi_mem(const char *config_path) {
         return;
     }
 
+    static double   psi_mem_some_10secs, psi_mem_some_60secs, psi_mem_some_300secs;
+    static uint64_t psi_mem_some_total_stall_msecs;
+
     // do some
-    double   psi_mem_some_10secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 2), NULL);
-    double   psi_mem_some_60secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 4), NULL);
-    double   psi_mem_some_300secs           = strtod(procfile_lineword(__pf_psi_mem, 0, 6), NULL);
-    uint64_t psi_mem_some_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_mem, 0, 8));
+    psi_mem_some_10secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 2), NULL);
+    psi_mem_some_60secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 4), NULL);
+    psi_mem_some_300secs           = strtod(procfile_lineword(__pf_psi_mem, 0, 6), NULL);
+    psi_mem_some_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_mem, 0, 8));
 
     debug("[PLUGIN_PROC:proc_pressure] psi_mem_some_10secs: %.2f, psi_mem_some_60secs: %.2f, "
           "psi_mem_some_300secs: %.2f, psi_mem_some_total_stall_msecs: %lu",
@@ -236,10 +241,13 @@ static void __collector_proc_psi_mem(const char *config_path) {
                    (const char *[]){ premetheus_instance_label, "mem" });
 
     // do full
-    double   psi_mem_full_10secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 10), NULL);
-    double   psi_mem_full_60secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 12), NULL);
-    double   psi_mem_full_300secs           = strtod(procfile_lineword(__pf_psi_mem, 0, 14), NULL);
-    uint64_t psi_mem_full_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_mem, 0, 16));
+    static double   psi_mem_full_10secs, psi_mem_full_60secs, psi_mem_full_300secs;
+    static uint64_t psi_mem_full_total_stall_msecs;
+
+    psi_mem_full_10secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 10), NULL);
+    psi_mem_full_60secs            = strtod(procfile_lineword(__pf_psi_mem, 0, 12), NULL);
+    psi_mem_full_300secs           = strtod(procfile_lineword(__pf_psi_mem, 0, 14), NULL);
+    psi_mem_full_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_mem, 0, 16));
 
     debug("[PLUGIN_PROC:proc_pressure] psi_mem_full_10secs: %.2f, psi_mem_full_60secs: %.2f, "
           "psi_mem_full_300secs: %.2f, psi_mem_full_total_stall_msecs: %lu",
@@ -280,10 +288,13 @@ static void __collector_proc_psi_io(const char *config_path) {
     }
 
     // do some
-    double   psi_io_some_10secs            = strtod(procfile_lineword(__pf_psi_io, 0, 2), NULL);
-    double   psi_io_some_60secs            = strtod(procfile_lineword(__pf_psi_io, 0, 4), NULL);
-    double   psi_io_some_300secs           = strtod(procfile_lineword(__pf_psi_io, 0, 6), NULL);
-    uint64_t psi_io_some_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_io, 0, 8));
+    static double   psi_io_some_10secs, psi_io_some_60secs, psi_io_some_300secs;
+    static uint64_t psi_io_some_total_stall_msecs;
+
+    psi_io_some_10secs            = strtod(procfile_lineword(__pf_psi_io, 0, 2), NULL);
+    psi_io_some_60secs            = strtod(procfile_lineword(__pf_psi_io, 0, 4), NULL);
+    psi_io_some_300secs           = strtod(procfile_lineword(__pf_psi_io, 0, 6), NULL);
+    psi_io_some_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_io, 0, 8));
 
     debug("[PLUGIN_PROC:proc_pressure] psi_io_some_10secs: %.2f, psi_io_some_60secs: %.2f, "
           "psi_io_some_300secs: %.2f, psi_io_some_total_stall_msecs: %lu",
@@ -300,10 +311,13 @@ static void __collector_proc_psi_io(const char *config_path) {
                    (const char *[]){ premetheus_instance_label, "io" });
 
     // do full
-    double   psi_io_full_10secs            = strtod(procfile_lineword(__pf_psi_io, 0, 10), NULL);
-    double   psi_io_full_60secs            = strtod(procfile_lineword(__pf_psi_io, 0, 12), NULL);
-    double   psi_io_full_300secs           = strtod(procfile_lineword(__pf_psi_io, 0, 14), NULL);
-    uint64_t psi_io_full_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_io, 0, 16));
+    static double   psi_io_full_10secs, psi_io_full_60secs, psi_io_full_300secs;
+    static uint64_t psi_io_full_total_stall_msecs;
+
+    psi_io_full_10secs            = strtod(procfile_lineword(__pf_psi_io, 0, 10), NULL);
+    psi_io_full_60secs            = strtod(procfile_lineword(__pf_psi_io, 0, 12), NULL);
+    psi_io_full_300secs           = strtod(procfile_lineword(__pf_psi_io, 0, 14), NULL);
+    psi_io_full_total_stall_msecs = str2uint64_t(procfile_lineword(__pf_psi_io, 0, 16));
 
     debug("[PLUGIN_PROC:proc_pressure] psi_io_full_10secs: %.2f, psi_io_full_60secs: %.2f, "
           "psi_io_full_300secs: %.2f, psi_io_full_total_stall_msecs: %lu",

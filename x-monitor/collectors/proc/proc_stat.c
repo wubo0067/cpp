@@ -83,28 +83,28 @@ int32_t init_collector_proc_cpustat() {
     // 设置prom指标
     if (unlikely(!__metric_interrupts_from_boot)) {
         __metric_interrupts_from_boot = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "interrupts", "CPU Interrupts", 2, (const char *[]){ "host", "system" }));
+            "interrupts", "CPU Interrupts", 2, (const char *[]){ "host", "cpustat" }));
     }
 
     if (unlikely(!__metric_context_switches_from_boot)) {
         __metric_context_switches_from_boot = prom_collector_registry_must_register_metric(
             prom_gauge_new("context_switches", "CPU Context Switches", 2,
-                           (const char *[]){ "host", "system" }));
+                           (const char *[]){ "host", "cpustat" }));
     }
 
     if (unlikely(!__metric_processes_from_boot)) {
         __metric_processes_from_boot = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "processes", "Started Processes", 2, (const char *[]){ "host", "system" }));
+            "processes", "Started Processes", 2, (const char *[]){ "host", "cpustat" }));
     }
 
     if (unlikely(!__metric_processes_running)) {
         __metric_processes_running = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "procs_running", "System Processes", 2, (const char *[]){ "host", "system" }));
+            "procs_running", "System Processes", 2, (const char *[]){ "host", "cpustat" }));
     }
 
     if (unlikely(!__metric_processes_blocked)) {
         __metric_processes_blocked = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "procs_blocked", "System Processes", 2, (const char *[]){ "host", "system" }));
+            "procs_blocked", "System Processes", 2, (const char *[]){ "host", "cpustat" }));
     }
 
     // 动态构建cpu.utilization指标
@@ -126,44 +126,44 @@ int32_t init_collector_proc_cpustat() {
 
                 cum->metric_user_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_user_jiffies", __metric_help_cpu_user_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_nice_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_nice_jiffies", __metric_help_cpu_nice_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_system_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_system_jiffies", __metric_help_cpu_system_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_idle_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_idle_jiffies", __metric_help_cpu_idle_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_iowait_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_iowait_jiffies", __metric_help_cpu_iowait_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_irq_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_irq_jiffies", __metric_help_cpu_irq_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_softirq_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_softirq_jiffies", __metric_help_cpu_softirq_jiffies,
-                                   2, (const char *[]){ "host", "cpu" }));
+                                   2, (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_steal_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_steal_jiffies", __metric_help_cpu_steal_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_guest_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new("total_cpu_guest_jiffies", __metric_help_cpu_guest_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
 
                 cum->metric_guest_nice_jiffies =
                     prom_collector_registry_must_register_metric(prom_gauge_new(
                         "total_cpu_guest_nice_jiffies", __metric_help_cpu_guest_nice_jiffies, 2,
-                        (const char *[]){ "host", "cpu" }));
+                        (const char *[]){ "host", "cpustat" }));
             } else {
                 int32_t core_id = index - 1;
                 ret = snprintf(cum->label_cpu_val, PROM_METRIC_LABEL_VALUE_LEN - 1, "cpu.core%d",
@@ -174,7 +174,7 @@ int32_t init_collector_proc_cpustat() {
                          "cpu_core%d_user_jiffies", core_id);
                 cum->metric_user_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new(cum->metric_user_jiffies_name, __metric_help_cpu_user_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_user_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -182,7 +182,7 @@ int32_t init_collector_proc_cpustat() {
                          "cpu_core%d_nice_jiffies", core_id);
                 cum->metric_nice_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new(cum->metric_nice_jiffies_name, __metric_help_cpu_nice_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_nice_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -192,7 +192,7 @@ int32_t init_collector_proc_cpustat() {
                 cum->metric_system_jiffies =
                     prom_collector_registry_must_register_metric(prom_gauge_new(
                         cum->metric_system_jiffies_name, __metric_help_cpu_system_jiffies, 2,
-                        (const char *[]){ "host", "cpu" }));
+                        (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_system_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ int32_t init_collector_proc_cpustat() {
                          "cpu_core%d_idle_jiffies", core_id);
                 cum->metric_idle_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new(cum->metric_idle_jiffies_name, __metric_help_cpu_idle_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_idle_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -211,7 +211,7 @@ int32_t init_collector_proc_cpustat() {
                 cum->metric_iowait_jiffies =
                     prom_collector_registry_must_register_metric(prom_gauge_new(
                         cum->metric_iowait_jiffies_name, __metric_help_cpu_iowait_jiffies, 2,
-                        (const char *[]){ "host", "cpu" }));
+                        (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_idle_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -220,7 +220,7 @@ int32_t init_collector_proc_cpustat() {
                          "cpu_core%d_irq_jiffies", core_id);
                 cum->metric_irq_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new(cum->metric_irq_jiffies_name, __metric_help_cpu_irq_jiffies, 2,
-                                   (const char *[]){ "host", "cpu" }));
+                                   (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_irq_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -230,7 +230,7 @@ int32_t init_collector_proc_cpustat() {
                 cum->metric_softirq_jiffies =
                     prom_collector_registry_must_register_metric(prom_gauge_new(
                         cum->metric_softirq_jiffies_name, __metric_help_cpu_softirq_jiffies, 2,
-                        (const char *[]){ "host", "cpu" }));
+                        (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_softirq_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -239,7 +239,7 @@ int32_t init_collector_proc_cpustat() {
                          "cpu_core%d_steal_jiffies", core_id);
                 cum->metric_steal_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new(cum->metric_steal_jiffies_name, __metric_help_cpu_steal_jiffies,
-                                   2, (const char *[]){ "host", "cpu" }));
+                                   2, (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_steal_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -248,7 +248,7 @@ int32_t init_collector_proc_cpustat() {
                          "cpu_core%d_guest_jiffies", core_id);
                 cum->metric_guest_jiffies = prom_collector_registry_must_register_metric(
                     prom_gauge_new(cum->metric_guest_jiffies_name, __metric_help_cpu_guest_jiffies,
-                                   2, (const char *[]){ "host", "cpu" }));
+                                   2, (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_guest_jiffies_name);
 
                 //--------------------------------------------------------------------------------
@@ -258,7 +258,7 @@ int32_t init_collector_proc_cpustat() {
                 cum->metric_guest_nice_jiffies =
                     prom_collector_registry_must_register_metric(prom_gauge_new(
                         cum->metric_guest_nice_jiffies_name, __metric_help_cpu_guest_nice_jiffies,
-                        2, (const char *[]){ "host", "cpu" }));
+                        2, (const char *[]){ "host", "cpustat" }));
                 debug("cpu.core:%d: '%s'", core_id, cum->metric_guest_nice_jiffies_name);
             }
         }

@@ -28,17 +28,17 @@ static prom_gauge_t *__metric_loadavg_1min = NULL, *__metric_loadavg_5min = NULL
 int32_t init_collector_proc_loadavg() {
     if (unlikely(!__metric_loadavg_1min)) {
         __metric_loadavg_1min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_1min", "System Load Average", 2, (const char *[]){ "host", "load" }));
+            "loadavg_1min", "System Load Average", 2, (const char *[]){ "host", "loadavg" }));
     }
 
     if (unlikely(!__metric_loadavg_5min)) {
         __metric_loadavg_5min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_5min", "System Load Average", 2, (const char *[]){ "host", "load" }));
+            "loadavg_5min", "System Load Average", 2, (const char *[]){ "host", "loadavg" }));
     }
 
     if (unlikely(!__metric_loadavg_15min)) {
         __metric_loadavg_15min = prom_collector_registry_must_register_metric(prom_gauge_new(
-            "loadavg_15min", "System Load Average", 2, (const char *[]){ "host", "load" }));
+            "loadavg_15min", "System Load Average", 2, (const char *[]){ "host", "loadavg" }));
     }
 
     if (unlikely(!__metric_active_processes)) {
