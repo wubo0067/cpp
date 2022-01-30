@@ -16,6 +16,7 @@
 
 #include "appconfig/appconfig.h"
 
+#define DEFAULT_PLUGINS_DIR "/usr/x-monitor/plugins.d"
 #define PLUGINSD_FILE_SUFFIX ".plugin"
 #define PLUGINSD_FILE_SUFFIX_LEN strlen(PLUGINSD_FILE_SUFFIX)
 

@@ -5,7 +5,7 @@
  * @Last Modified time: 2022-01-18 14:38:43
  */
 
-#include <stdio.h>
+#pragma once
 
 #define PID_FILENAME_MAX 32
 #define NUMBER_BUFFER_SIZE 32
@@ -18,7 +18,6 @@
 #define PROM_METRIC_NAME_LEN 32
 #define PROM_METRIC_LABEL_VALUE_LEN 128
 
-extern char *DEFAULT_PLUGINS_DIR;
 extern char *DEFAULT_PIDFILE;
 
 extern char premetheus_instance_label[PROM_METRIC_LABEL_VALUE_LEN];

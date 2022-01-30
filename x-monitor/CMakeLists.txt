@@ -116,6 +116,9 @@ set(PROC_PLUGIN_FILES
         collectors/proc/proc_diskstats.c
         collectors/proc/proc_loadavg.c
         collectors/proc/proc_stat.c
+        collectors/proc/proc_pressure.c
+        collectors/proc/proc_vmstat.c
+        collectors/proc/proc_meminfo.c
         collectors/diskspace/plugin_diskspace.c
         collectors/diskspace/plugin_diskspace.h
         )

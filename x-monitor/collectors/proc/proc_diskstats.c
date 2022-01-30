@@ -160,6 +160,10 @@ static struct io_device *__get_device(char *device_name, uint32_t major, uint32_
     return dev;
 }
 
+int32_t init_collector_proc_diskstats() {
+    return 0;
+}
+
 int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const char *config_path) {
     debug("[PLUGIN_PROC:proc_diskstats] config:%s running", config_path);
 
@@ -361,4 +365,7 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
     }
 
     return 0;
+}
+
+void fini_collector_proc_diskstats() {
 }

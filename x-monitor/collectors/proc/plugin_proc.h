@@ -26,15 +26,23 @@ enum disk_type {
     DISK_TYPE_VIRTUAL,
 };
 
-extern int32_t collector_proc_diskstats(int32_t update_every, usec_t dt, const char *config_path);
+#define DEF_COLLECTOR_PROC_FUNC(name)                                     \
+    extern int32_t init_collector_proc_##name();                          \
+    extern int32_t collector_proc_##name(int32_t update_every, usec_t dt, \
+                                         const char *config_path);        \
+    extern void    fini_collector_proc_##name();
 
-extern int32_t init_collector_proc_stat();
-extern int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_path);
-extern void    fini_collector_proc_stat();
+DEF_COLLECTOR_PROC_FUNC(diskstats)
 
-extern int32_t init_collector_proc_loadavg();
-extern int32_t collector_proc_loadavg(int32_t update_every, usec_t dt, const char *config_path);
-extern void    fini_collector_porc_loadavg();
+DEF_COLLECTOR_PROC_FUNC(cpustat)
+
+DEF_COLLECTOR_PROC_FUNC(loadavg)
+
+DEF_COLLECTOR_PROC_FUNC(pressure)
+
+DEF_COLLECTOR_PROC_FUNC(vmstat)
+
+DEF_COLLECTOR_PROC_FUNC(meminfo)
 
 #ifdef __cplusplus
 }

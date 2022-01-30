@@ -77,7 +77,7 @@ struct cpu_utilization_metric {
 
 static struct cpu_utilization_metric *__cpu_utilization_metrics = NULL;
 
-int32_t init_collector_proc_stat() {
+int32_t init_collector_proc_cpustat() {
     int32_t ret = 0;
 
     // 设置prom指标
@@ -333,7 +333,7 @@ static void do_cpu_utilization(size_t line, int32_t core_index) {
           irq_jiffies, soft_irq_jiffies, steal_jiffies, guest_jiffies, guest_nice_jiffies);
 }
 
-int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_path) {
+int32_t collector_proc_cpustat(int32_t update_every, usec_t dt, const char *config_path) {
     debug("[PLUGIN_PROC:proc_stat] config:%s running", config_path);
 
     const char *f_stat =
@@ -441,7 +441,7 @@ int32_t collector_proc_stat(int32_t update_every, usec_t dt, const char *config_
     return 0;
 }
 
-void fini_collector_proc_stat() {
+void fini_collector_proc_cpustat() {
     if (likely(__pf_stat)) {
         procfile_close(__pf_stat);
         __pf_stat = NULL;

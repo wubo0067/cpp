@@ -13,16 +13,17 @@
 extern "C" {
 #endif
 
-extern int32_t str_split_to_nums( const char* str, const char* delim, uint64_t* nums, uint16_t nums_max_size );
+extern int32_t str_split_to_nums(const char *str, const char *delim, uint64_t *nums,
+                                 uint16_t nums_max_size);
 
-extern uint32_t           str2uint32_t( const char* s );
-extern uint64_t           str2uint64_t( const char* s );
-extern unsigned long      str2ul( const char* s );
-extern unsigned long long str2ull( const char* s );
-extern long long          str2ll( const char* s, char** endptr );
-extern long double        str2ld( const char* s, char** endptr );
+extern uint32_t           str2uint32_t(const char *s);
+extern uint64_t           str2uint64_t(const char *s);
+extern unsigned long      str2ul(const char *s);
+extern unsigned long long str2ull(const char *s);
+extern long long          str2ll(const char *s, char **endptr);
+extern long double        str2ld(const char *s, char **endptr);
 
-extern uint32_t bkrd_hash( const void* key, size_t len );
+extern uint32_t bkrd_hash(const void *key, size_t len);
 
 #ifdef __cplusplus
 }

@@ -109,7 +109,7 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     return 0;
 }
 
-void fini_collector_porc_loadavg() {
+void fini_collector_proc_loadavg() {
     if (likely(__pf_loadavg)) {
         procfile_close(__pf_loadavg);
         __pf_loadavg = NULL;

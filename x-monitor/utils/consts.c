@@ -7,7 +7,6 @@
 
 #include "consts.h"
 
-char *DEFAULT_PLUGINS_DIR = "/usr/libexec/netdata/plugins.d";
-char *DEFAULT_PIDFILE     = "/tmp/x-monitor.pid";
+char *DEFAULT_PIDFILE = "/tmp/x-monitor.pid";
 
 char premetheus_instance_label[PROM_METRIC_LABEL_VALUE_LEN] = { 0 };
