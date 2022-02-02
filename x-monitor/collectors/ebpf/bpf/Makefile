@@ -15,7 +15,7 @@ CLANG_BPF_SYS_INCLUDES = $(shell $(CLANG) -v -E - </dev/null 2>&1 \
 	| sed -n '/<...> search starts here:/,/End of search list./{ s| \(/.*\)|-idirafter \1|p }')
 
 INCLUDES := -I$(abspath $(OUTPUT)) \
-			-I$(abspath ../../../extra/libbpf) \
+			-I$(abspath ../../../extra/include) \
 			-I$(abspath ../../../extra/libbpf/libbpf/include/uapi)
 
 CFLAGS := -g -Wall
@@ -77,8 +77,8 @@ $(OUTPUT)/vmlinux.h: $(VMLINUX_BTF_PATH) | $(OUTPUT)
 $(LIBBPF_OBJ): $(wildcard $(LIBBPF_SRC)/*.[ch] $(LIBBPF_SRC)/Makefile)
 	$(call msg,LIB,$@)
 	$(Q)$(MAKE) $(submake_extras) -C $(LIBBPF_SRC) BUILD_STATIC_ONLY=1  \
-									OBJDIR=$(dir $@)/lib DESTDIR=$(dir $@)	\
-									INCLUDEDIR= LIBDIR= UAPIDIR=	    \
+									OBJDIR=$(dir $@) DESTDIR=	\
+									INCLUDEDIR=$(abspath ../../../extra/include) LIBDIR=$(abspath ../../../extra/libs) UAPIDIR=	    \
 									install
 
 $(OUTPUT):
