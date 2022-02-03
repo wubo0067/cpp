@@ -9,10 +9,8 @@ BPF_KERN_OBJS  := $(patsubst %.bpf.c, %.bpf.o, $(SRCS))
 LIBBPF_SRC := $(abspath ../../../extra/libbpf/libbpf/src)
 LIBBPF_OBJ := $(abspath ../../../extra/libbpf/libbpf.a)
 
-BPFTOOL_OUTPUT := $(abspath $(OUTPUT)/bpftool)
-
+BPFTOOL_OUTPUT := $(abspath ../user)
 BPF_SEKL_HS = $(patsubst %.bpf.c, %.skel.h, $(SRCS))
-BPF_SEKL_H_OUTPUT := $(abspath ../user)
 
 CLANG_BPF_SYS_INCLUDES = $(shell $(CLANG) -v -E - </dev/null 2>&1 \
 	| sed -n '/<...> search starts here:/,/End of search list./{ s| \(/.*\)|-idirafter \1|p }')
@@ -70,10 +68,10 @@ $(BPF_KERN_OBJS): %.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
 	
 
 # 两个变量写在一起，$@只是最后一个变量
-skels: $(patsubst %.bpf.o,$(BPF_SEKL_H_OUTPUT)/%.skel.h,$(BPF_KERN_OBJS))
+skels: $(patsubst %.bpf.o,$(BPFTOOL_OUTPUT)/%.skel.h,$(BPF_KERN_OBJS))
 	$(call msg,GEN-SKELS,$^)
 
-$(BPF_SEKL_H_OUTPUT)/%.skel.h: %.bpf.o
+$(BPFTOOL_OUTPUT)/%.skel.h: %.bpf.o
 	$(call msg,GEN-SKEL-H,$@)
 	$(Q)$(BPFTOOL) gen skeleton $< > $@
 
