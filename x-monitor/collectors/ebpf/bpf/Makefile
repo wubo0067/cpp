@@ -11,6 +11,9 @@ LIBBPF_OBJ := $(abspath ../../../extra/libbpf/libbpf.a)
 
 BPFTOOL_OUTPUT := $(abspath $(OUTPUT)/bpftool)
 
+BPF_SEKL_HS = $(patsubst %.bpf.c, %.skel.h, $(SRCS))
+BPF_SEKL_H_OUTPUT := $(abspath ../user)
+
 CLANG_BPF_SYS_INCLUDES = $(shell $(CLANG) -v -E - </dev/null 2>&1 \
 	| sed -n '/<...> search starts here:/,/End of search list./{ s| \(/.*\)|-idirafter \1|p }')
 
@@ -57,14 +60,22 @@ else
   submake_extras := feature_display=0 
 endif
 
-.PHONY: all clean
-all: $(BPF_KERN_OBJS)
+.PHONY: all clean skels
+all: $(BPF_KERN_OBJS) skels
 
 $(BPF_KERN_OBJS): %.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@	
 	$(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
-	# /bin/bash rename_binaries.sh "$(VER_MAJOR)" "$(VER_MINOR)" "$@"	
+	
+
+# 两个变量写在一起，$@只是最后一个变量
+skels: $(patsubst %.bpf.o,$(BPF_SEKL_H_OUTPUT)/%.skel.h,$(BPF_KERN_OBJS))
+	$(call msg,GEN-SKELS,$^)
+
+$(BPF_SEKL_H_OUTPUT)/%.skel.h: %.bpf.o
+	$(call msg,GEN-SKEL-H,$@)
+	$(Q)$(BPFTOOL) gen skeleton $< > $@
 
 $(OUTPUT)/vmlinux.h: $(VMLINUX_BTF_PATH) | $(OUTPUT)
 	$(Q)if [ ! -e "$(VMLINUX_BTF_PATH)" ] ; then \
@@ -87,4 +98,4 @@ $(OUTPUT):
 
 clean:
 	$(call msg,CLEAN)
-	$(Q)rm -rf $(OUTPUT) $(BPF_KERN_OBJS) $(LIBBPF_OBJ)
+	$(Q)rm -rf $(OUTPUT) $(BPF_KERN_OBJS) $(LIBBPF_OBJ) $(BPF_SEKL_H_OUTPUT)/%.skel.h
