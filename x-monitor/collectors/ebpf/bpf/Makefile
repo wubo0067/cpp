@@ -4,7 +4,7 @@ LLVM_STRIP	?= llvm-strip
 BPFTOOL ?= $(abspath ../../../extra/libbpf/tools/bpftool)
 
 SRCS			= $(wildcard *.c)
-BPF_KERN_OBJS  := $(patsubst %.bpf.c, %.bpf.o, $(SRCS))
+BPF_KERN_OBJS  := $(patsubst %.bpf.c, $(OUTPUT)/%.bpf.o, $(SRCS))
 
 LIBBPF_SRC := $(abspath ../../../extra/libbpf/libbpf/src)
 LIBBPF_OBJ := $(abspath ../../../extra/libbpf/libbpf.a)
@@ -61,17 +61,18 @@ endif
 .PHONY: all clean skels
 all: $(BPF_KERN_OBJS) skels
 
-$(BPF_KERN_OBJS): %.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
+$(BPF_KERN_OBJS): $(OUTPUT)/%.bpf.o: $(OUTPUT)/vmlinux.h $(LIBBPF_OBJ) %.bpf.c
 	$(call msg,BPF,$@)
 	$(Q)$(CLANG) -g -O2 -target bpf -D__TARGET_ARCH_$(ARCH) $(INCLUDES) $(CLANG_BPF_SYS_INCLUDES) -c $(filter %.bpf.c,$^) -o $@	
 	$(Q)$(LLVM_STRIP) -g $@ # strip useless DWARF info
 	
 
 # 两个变量写在一起，$@只是最后一个变量
-skels: $(patsubst %.bpf.o,$(BPFTOOL_OUTPUT)/%.skel.h,$(BPF_KERN_OBJS))
+skels: $(patsubst $(OUTPUT)/%.bpf.o, $(BPFTOOL_OUTPUT)/%.skel.h, $(BPF_KERN_OBJS))
+	@echo $(BPF_KERN_OBJS)
 	$(call msg,GEN-SKELS,$^)
 
-$(BPFTOOL_OUTPUT)/%.skel.h: %.bpf.o
+$(BPFTOOL_OUTPUT)/%.skel.h: $(OUTPUT)/%.bpf.o
 	$(call msg,GEN-SKEL-H,$@)
 	$(Q)$(BPFTOOL) gen skeleton $< > $@
 
@@ -96,4 +97,4 @@ $(OUTPUT):
 
 clean:
 	$(call msg,CLEAN)
-	$(Q)rm -rf $(OUTPUT) $(BPF_KERN_OBJS) $(LIBBPF_OBJ) $(BPF_SEKL_H_OUTPUT)/%.skel.h
+	$(Q)rm -rf $(OUTPUT) $(BPF_KERN_OBJS) $(LIBBPF_OBJ) $(BPFTOOL_OUTPUT)/*.skel.h ../../../extra/libbpf/staticobjs
