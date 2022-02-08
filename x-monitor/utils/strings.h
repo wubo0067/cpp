@@ -20,10 +20,12 @@ extern uint32_t           str2uint32_t(const char *s);
 extern uint64_t           str2uint64_t(const char *s);
 extern unsigned long      str2ul(const char *s);
 extern unsigned long long str2ull(const char *s);
-extern long long          str2ll(const char *s, char **endptr);
+extern int64_t            str2int64_t(const char *s, char **endptr);
 extern long double        str2ld(const char *s, char **endptr);
 
 extern uint32_t bkrd_hash(const void *key, size_t len);
+
+extern uint32_t simple_hash(const char *name);
 
 #ifdef __cplusplus
 }

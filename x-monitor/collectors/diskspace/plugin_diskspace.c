@@ -61,7 +61,8 @@ __attribute__((constructor)) static void collector_diskspace_register_routine() 
 
 static void __reload_mountinfo(int32_t force) {
     static time_t last_load = 0;
-    time_t        now       = now_realtime_sec();
+
+    time_t now = now_realtime_sec();
 
     if (force || now - last_load >= __collector_diskspace.check_for_new_mountinfos_every) {
         // 先释放
