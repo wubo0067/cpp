@@ -90,7 +90,7 @@ int32_t collector_proc_loadavg(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     uint64_t active_processes = str2ull(procfile_lineword(__pf_loadavg, 0, 4));
     pid_t    last_running_pid = (pid_t)strtoll(procfile_lineword(__pf_loadavg, 0, 5), NULL, 10);
 
-    debug("LOAD AVERAGE: %.2f %.2f %.2f active_processes: %lu "
+    debug("[PLUGIN_PROC:proc_loadavg] LOAD AVERAGE: %.2f %.2f %.2f active_processes: %lu "
           "last_running_pid: %d",
           load_1m, load_5m, load_15m, active_processes, last_running_pid);
 

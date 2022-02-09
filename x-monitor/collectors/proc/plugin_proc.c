@@ -67,6 +67,20 @@ static struct proc_metrics_module
                                       .do_func   = collector_proc_pressure,
                                       .fini_func = fini_collector_proc_pressure,
                                   },
+                                  {
+                                      .name      = "proc_meminfo",
+                                      .enabled   = 1,
+                                      .init_func = init_collector_proc_meminfo,
+                                      .do_func   = collector_proc_meminfo,
+                                      .fini_func = fini_collector_proc_meminfo,
+                                  },
+                                  {
+                                      .name      = "proc_vmstat",
+                                      .enabled   = 1,
+                                      .init_func = init_collector_proc_vmstat,
+                                      .do_func   = collector_proc_vmstat,
+                                      .fini_func = fini_collector_proc_vmstat,
+                                  },
                                   // the terminator of this array
                                   { .name = NULL, .do_func = NULL, .fini_func = NULL },
                               } };

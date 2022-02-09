@@ -257,7 +257,8 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
 
         // 计算两次采集间隔时间，单位秒
         double dt_sec = (double)dt / (double)USEC_PER_SEC;
-        debug("disk[%d:%d]:'%s' dt_sec=%.2f, dt=%lu", major, minor, dev_name, dt_sec, dt);
+        debug("[PLUGIN_PROC:proc_diskstats] disk[%d:%d]:'%s' dt_sec=%.2f, dt=%lu", major, minor,
+              dev_name, dt_sec, dt);
 
         // IO每秒读次数
         double rd_ios_per_sec = ((double)(curr_devstats->rd_ios - prev_devstats->rd_ios)) / dt_sec;
@@ -333,7 +334,8 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
             system_read_kb += curr_devstats->rd_sectors / 2;
             system_write_kb += curr_devstats->wr_sectors / 2;
 
-            debug("disk[%d:%d]:'%s' system_read_kb=%ld(Kb ), system_write_kb=%ld(Kb), "
+            debug("[PLUGIN_PROC:proc_diskstats] disk[%d:%d]:'%s' system_read_kb=%ld(Kb ), "
+                  "system_write_kb=%ld(Kb), "
                   "rd_ios_per_sec=%.2f(r/s), "
                   "rw_ios_per_sec=%.2f(w/s), "
                   "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), "
@@ -346,7 +348,8 @@ int32_t collector_proc_diskstats(int32_t UNUSED(update_every), usec_t dt, const 
                   wr_merges_per_sec, r_await, w_await, await, aqu_sz, arq_sz, rarq_sz, warq_sz,
                   utils);
         } else {
-            debug("disk[%d:%d]:'%s' rd_ios_per_sec=%.2f(r/s), rw_ios_per_sec=%.2f(w/s), "
+            debug("[PLUGIN_PROC:proc_diskstats] disk[%d:%d]:'%s' rd_ios_per_sec=%.2f(r/s), "
+                  "rw_ios_per_sec=%.2f(w/s), "
                   "rd_kb_per_sec=%.2f(rkB/s), wr_kb_per_sec=%.2f(wkB/s), "
                   "rd_merges_per_sec=%.2f(rrqm/s), "
                   "wr_merges_per_sec=%.2f(wrqm/s), r_await=%.2f(ms), w_await=%.2f(ms), "
