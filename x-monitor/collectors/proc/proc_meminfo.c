@@ -43,17 +43,17 @@ static uint64_t
     // 被高速缓冲存储用的交换空间（硬盘的swap）的大小
     __swap_cached = 0,
     // 经常使用的高速缓冲存储器页面文件大小
-    __active = 0,
+    // __active = 0,
     // 不经常使用的高速缓冲存储器文件大小
-    __inactive = 0,
+    // __inactive = 0,
     // 活跃的匿名内存
-    __active_anon = 0,
+    // __active_anon = 0,
     // 不活跃的匿名内存
-    __inactive_anon = 0,
+    // __inactive_anon = 0,
     // 活跃的文件使用内存
-    __active_file = 0,
+    // __active_file = 0,
     // 不活跃的文件使用内存
-    __inactive_file = 0,
+    // __inactive_file = 0,
     // 不能被释放的内存页
     // __unevictable = 0,
     // 系统调用 mlock 家族允许程序在物理内存上锁住它的部分或全部地址空间。这将阻止Linux
@@ -120,9 +120,9 @@ static uint64_t
     // 已经被应用程序分配但尚未使用的大页内存
     __huge_pages_rsvd = 0,
     // 初始大页数与修改配置后大页数的差值
-    __huge_pages_surp = 0,
-    // 单个大页内存的大小
-    __huge_pages_size = 0;
+    __huge_pages_surp = 0;
+// 单个大页内存的大小
+// __huge_pages_size = 0,
 // 映射TLB为4kB的内存数量
 // __direct_map_4k = 0,
 // 映射TLB为2M的内存数量
@@ -146,7 +146,7 @@ static prom_gauge_t *__metric_memfree = NULL, *__metric_memused = NULL, *__metri
                     *__metric_shmemhugepages = NULL;
 
 int32_t init_collector_proc_meminfo() {
-    __arl_base = arl_create("proc_meminfo", NULL, 60);
+    __arl_base = arl_create("proc_meminfo", NULL, 3);
 
     if (unlikely(NULL == __arl_base)) {
         return -1;
@@ -158,12 +158,12 @@ int32_t init_collector_proc_meminfo() {
     arl_expect(__arl_base, "Buffers", &__buffers);
     arl_expect(__arl_base, "Cached", &__cached);
     arl_expect(__arl_base, "SwapCached", &__swap_cached);
-    arl_expect(__arl_base, "Active", &__active);
-    arl_expect(__arl_base, "Inactive", &__inactive);
-    arl_expect(__arl_base, "Active(anon)", &__active_anon);
-    arl_expect(__arl_base, "Inactive(anon)", &__inactive_anon);
-    arl_expect(__arl_base, "Active(file)", &__active_file);
-    arl_expect(__arl_base, "Inactive(file)", &__inactive_file);
+    // arl_expect(__arl_base, "Active", &__active);
+    // arl_expect(__arl_base, "Inactive", &__inactive);
+    // arl_expect(__arl_base, "Active(anon)", &__active_anon);
+    // arl_expect(__arl_base, "Inactive(anon)", &__inactive_anon);
+    // arl_expect(__arl_base, "Active(file)", &__active_file);
+    // arl_expect(__arl_base, "Inactive(file)", &__inactive_file);
     arl_expect(__arl_base, "SwapTotal", &__swap_total);
     arl_expect(__arl_base, "SwapFree", &__swap_free);
     arl_expect(__arl_base, "Dirty", &__dirty);
@@ -192,7 +192,7 @@ int32_t init_collector_proc_meminfo() {
     arl_expect(__arl_base, "HugePages_Free", &__huge_pages_free);
     arl_expect(__arl_base, "HugePages_Rsvd", &__huge_pages_rsvd);
     arl_expect(__arl_base, "HugePages_Surp", &__huge_pages_surp);
-    arl_expect(__arl_base, "Hugepagesize", &__huge_pages_size);
+    // arl_expect(__arl_base, "Hugepagesize", &__huge_pages_size);
     // arl_expect(__arl_base, "DirectMap4k", &__direct_map_4k);
     // arl_expect(__arl_base, "DirectMap2M", &__direct_map_2M);
     // arl_expect(__arl_base, "DirectMap1G", &__direct_map_1G);
