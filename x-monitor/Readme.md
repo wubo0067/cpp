@@ -176,6 +176,7 @@
       {__name__=~"loadavg_15min|loadavg_1min|loadavg_5min"}
       {host="localhost.localdomain:8000"}
       {meminfo!=""} 查看所有meminfo标签指标
+      {psi!=""} 查看所有psi指标
       ```
 
       时间戳转换工具：[Unix时间戳(Unix timestamp)转换工具 - 时间戳转换工具 (bmcx.com)](https://unixtime.bmcx.com/)
