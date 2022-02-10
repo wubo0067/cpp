@@ -309,9 +309,8 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
         if (unlikely(words < 2))
             continue;
 
-        if (unlikely(arl_check(__arl_base, procfile_lineword(__pf_meminfo, l, 0),
-                               procfile_lineword(__pf_meminfo, l, 1)))) {
-            warn("[PLUGIN_PROC:proc_meminfo] arl_check failed");
+        const char *meminfo_key = procfile_lineword(__pf_meminfo, l, 0);
+        if (unlikely(arl_check(__arl_base, meminfo_key, procfile_lineword(__pf_meminfo, l, 1)))) {
             break;
         }
     }
@@ -336,8 +335,8 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                        premetheus_instance_label,
                        "available",
                    });
-    debug("[PLUGIN_PROC:proc_meminfo] mem_free:%lu mem_used:%lu mem_cached:%lu buffers:%lu "
-          "mem_available:%lu",
+    debug("[PLUGIN_PROC:proc_meminfo] mem_free:%lu kB mem_used:%lu kB mem_cached:%lu kB "
+          "buffers:%lu kB mem_available:%lu kB",
           __mem_free, mem_used, mem_cached, __buffers, __mem_available);
 
     // SwapUsed SwapFree
@@ -346,7 +345,7 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                    (const char *[]){ premetheus_instance_label, "swap" });
     prom_gauge_set(__metric_swapfree, __swap_free,
                    (const char *[]){ premetheus_instance_label, "swap" });
-    debug("[PLUGIN_PROC:proc_meminfo] swap_used:%lu swap_free:%lu", swap_used, __swap_free);
+    debug("[PLUGIN_PROC:proc_meminfo] swap_used:%lu kB swap_free:%lu kB", swap_used, __swap_free);
 
     // HardwareCorrupted
     prom_gauge_set(__metric_hardwarecorrupted, __hardware_corrupted,
@@ -356,8 +355,9 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
     prom_gauge_set(__metric_committedas, __committed_as,
                    (const char *[]){ premetheus_instance_label, "committed" });
 
-    debug("[PLUGIN_PROC:proc_meminfo] hardware_corrupted:%lu Committed (Allocated) Memory:%lu",
-          __hardware_corrupted, __committed_as);
+    debug(
+        "[PLUGIN_PROC:proc_meminfo] hardware_corrupted:%lu kB Committed (Allocated) Memory:%lu kB",
+        __hardware_corrupted, __committed_as);
 
     // Dirty Writeback FuseWriteback NfsWriteback Bounce
     prom_gauge_set(__metric_dirty, __dirty,
@@ -370,8 +370,8 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                    (const char *[]){ premetheus_instance_label, "writeback" });
     prom_gauge_set(__metric_bounce, __bounce,
                    (const char *[]){ premetheus_instance_label, "writeback" });
-    debug("[PLUGIN_PROC:proc_meminfo] Dirty:%lu Writeback:%lu WritebackTmp:%lu NfsUnstable:%lu "
-          "Bounce:%lu",
+    debug("[PLUGIN_PROC:proc_meminfo] Dirty:%lu kB Writeback:%lu kB WritebackTmp:%lu kB "
+          "NfsUnstable:%lu kB Bounce:%lu kB",
           __dirty, __writeback, __writeback_tmp, __nfs_unstable, __bounce);
 
     // Slab KernelStack PageTables VmallocUsed Percpu
@@ -387,8 +387,8 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                    (const char *[]){ premetheus_instance_label, "kernel" });
     prom_gauge_set(__metric_percpu, __mem_percpu,
                    (const char *[]){ premetheus_instance_label, "kernel" });
-    debug("[PLUGIN_PROC:proc_meminfo] Slab:%lu KernelStack:%lu PageTables:%lu VmallocUsed:%lu "
-          "Percpu:%lu",
+    debug("[PLUGIN_PROC:proc_meminfo] Slab:%lu kB KernelStack:%lu kB PageTables:%lu kB "
+          "VmallocUsed:%lu kB Percpu:%lu kB",
           __slab, __kernel_stack, __page_tables, __vmalloc_used, __mem_percpu);
 
     // reclaimable unreclaimable
@@ -396,7 +396,7 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                    (const char *[]){ premetheus_instance_label, "slab" });
     prom_gauge_set(__metric_slabunreclaimable, __slab_unreclaimable,
                    (const char *[]){ premetheus_instance_label, "slab" });
-    debug("[PLUGIN_PROC:proc_meminfo] SlabReclaimable:%lu SlabUnreclaimable:%lu",
+    debug("[PLUGIN_PROC:proc_meminfo] SlabReclaimable:%lu kB SlabUnreclaimable:%lu kB",
           __slab_reclaimable, __slab_unreclaimable);
 
     // HugePages_Total - HugePages_Free - HugePages_Rsvd HugePages_Free HugePages_Rsvd
@@ -429,8 +429,8 @@ int32_t collector_proc_meminfo(int32_t UNUSED(update_every), usec_t UNUSED(dt),
                    (const char *[]){ premetheus_instance_label, "transparent_hugepages" });
     prom_gauge_set(__metric_shmemhugepages, __shmem_huge_pages,
                    (const char *[]){ premetheus_instance_label, "transparent_hugepages" });
-    debug("[PLUGIN_PROC:proc_meminfo] AnonHugePages:%lu ShmemHugePages:%lu", __anon_huge_pages,
-          __shmem_huge_pages);
+    debug("[PLUGIN_PROC:proc_meminfo] AnonHugePages:%lu kB ShmemHugePages:%lu kB",
+          __anon_huge_pages, __shmem_huge_pages);
     return 0;
 }
 
@@ -444,4 +444,5 @@ void fini_collector_proc_meminfo() {
         procfile_close(__pf_meminfo);
         __pf_meminfo = NULL;
     }
+    debug("[PLUGIN_PROC:proc_meminfo] stopped");
 }

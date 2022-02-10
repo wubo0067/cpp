@@ -20,12 +20,15 @@
 #include "appconfig/appconfig.h"
 
 int32_t init_collector_proc_vmstat() {
+    debug("[PLUGIN_PROC:proc_vmstat] init successed");
     return 0;
 }
 
 int32_t collector_proc_vmstat(int32_t update_every, usec_t dt, const char *config_path) {
+    debug("[PLUGIN_PROC:proc_vmstat] config:%s running", config_path);
     return 0;
 }
 
 void fini_collector_proc_vmstat() {
+    debug("[PLUGIN_PROC:proc_vmstat] stopped");
 }
