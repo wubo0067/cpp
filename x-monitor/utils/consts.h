@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-10-22 11:57:56
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-18 14:38:43
+ * @Last Modified time: 2022-02-11 14:44:34
  */
 
 #pragma once
@@ -17,6 +17,7 @@
 #define IP_BUF_SIZE 16
 #define PROM_METRIC_NAME_LEN 32
 #define PROM_METRIC_LABEL_VALUE_LEN 128
+#define ITF_NAME_SIZE 64
 
 extern char *DEFAULT_PIDFILE;
 

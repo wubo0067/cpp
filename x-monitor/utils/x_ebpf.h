@@ -1,8 +1,8 @@
 /*
- * @Author: CALM.WU 
- * @Date: 2021-11-03 11:26:22 
+ * @Author: CALM.WU
+ * @Date: 2021-11-03 11:26:22
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2021-11-03 16:48:18
+ * @Last Modified time: 2022-02-11 11:16:17
  */
 
 #pragma once
@@ -12,22 +12,32 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
-#include <linux/compiler.h>
+//#include <linux/compiler.h>
 
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
-#include <linux/bpf.h>
-#include <linux/ptrace.h>
+//#include <linux/bpf.h>
+//#include <linux/ptrace.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <trace_helpers.h>
-#include <perf-sys.h>
+struct ksym {
+    long  addr;
+    char *name;
+};
 
-extern int32_t bpf_printf(enum libbpf_print_level level, const char *fmt,
-                          va_list args);
+//#include <trace_helpers.h>
+//#include <perf-sys.h>
+
+extern int32_t      load_kallsyms();
+extern struct ksym *ksym_search(long key);
+extern long         ksym_get_addr(const char *name);
+/* open kallsyms and find addresses on the fly, faster than load + search. */
+extern int32_t kallsyms_find(const char *sym, unsigned long long *addr);
+
+extern int32_t bpf_printf(enum libbpf_print_level level, const char *fmt, va_list args);
 
 extern const char *bpf_get_ksym_name(uint64_t addr);
 

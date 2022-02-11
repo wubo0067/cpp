@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-11-03 11:51:34
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-01-24 17:19:10
+ * @Last Modified time: 2022-02-11 14:04:08
  */
 
 #include "common.h"
@@ -15,6 +15,7 @@ static int32_t __processors = 1;
 
 static const char __no_user[] = "";
 
+// 锁定内存限制 BCC 已经无条件地将此限制设置为无穷大，但 libbpf 不会自动执行此操作（按照设计）。
 int32_t bump_memlock_rlimit(void) {
     struct rlimit rlim_new = {
         .rlim_cur = RLIM_INFINITY,

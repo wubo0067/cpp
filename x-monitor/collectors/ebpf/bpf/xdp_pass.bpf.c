@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-04 17:00:21
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-10 17:06:16
+ * @Last Modified time: 2022-02-11 16:25:04
  */
 
 // https://mp.weixin.qq.com/s/fX4HyWdY9AalQLpj5zhoYw
@@ -66,8 +66,11 @@ SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
     }
 
     __u64 *rx_cnt = bpf_map_lookup_elem(&ipproto_rx_cnt_map, &ip_proto);
-    if (*rx_cnt) {
+    if (rx_cnt) {
         *rx_cnt += 1;
+    } else {
+        __u64 init_value = 1;
+        bpf_map_update_elem(&ipproto_rx_cnt_map, &ip_proto, &init_value, BPF_NOEXIST);
     }
 
     return XDP_PASS;
