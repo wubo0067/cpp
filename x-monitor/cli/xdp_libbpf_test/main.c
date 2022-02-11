@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-11 10:36:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-11 15:25:21
+ * @Last Modified time: 2022-02-11 18:01:16
  */
 #include <argp.h>
 
@@ -14,6 +14,7 @@
 #include "utils/x_ebpf.h"
 
 #include <bpf/libbpf.h>
+#include <linux/if_link.h>
 #include "xdp_pass.skel.h"
 
 struct args {
@@ -23,6 +24,8 @@ struct args {
     .itf_index = -1,  // 所有的网卡
     .verbose   = true,
 };
+
+static uint32_t __xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
 
 static const struct argp_option __opts[] = {
     { "itf", 'i', "-1", OPTION_ARG_OPTIONAL, "Interface name", 0 },
@@ -66,6 +69,9 @@ int32_t main(int32_t argc, char **argv) {
         return -1;
     }
 
+    __xdp_flags |= XDP_FLAGS_SKB_MODE;
+
+    libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     // Libbpf 日志
     if (env.verbose) {
         libbpf_set_print(bpf_printf);
@@ -83,7 +89,7 @@ int32_t main(int32_t argc, char **argv) {
         fprintf(stderr, "failed to open and/or load BPF object\n");
         return -1;
     } else {
-        debug("BPF object loaded");
+        debug("BPF object opened");
     }
 
     // 加载
@@ -94,6 +100,29 @@ int32_t main(int32_t argc, char **argv) {
     } else {
         debug("BPF object loaded");
     }
+
+    // debug("xdp_prog_simple name: %s sec_name: %s", obj->progs.xdp_prog_simple->name,
+    //       obj->progs.xdp_prog_simple->sec_name);
+
+    int32_t map_fd = bpf_map__fd(obj->maps.ipproto_rx_cnt_map);
+    debug("bpf map ipproto_rx_cnt_map fd:%d", map_fd);
+
+    int32_t prog_fd = bpf_program__fd(obj->progs.xdp_prog_simple);
+    debug("bpf prog xdp_prog_simple fd:%d", map_fd);
+
+    // 附加 它是可选的，你可以通过直接使用 libbpf API 获得更多控制）；
+    // ret = xdp_pass_bpf__attach(obj);
+    ret = bpf_xdp_attach(prog_fd, env.itf_index, __xdp_flags, NULL);
+    if (ret) {
+        fprintf(stderr, "failed to attach BPF programs. ret: %d err: %s\n", ret, strerror(errno));
+        goto cleanup;
+    } else {
+        debug("BPF programs attached");
+    }
+
+    sleep(1);
+
+    bpf_xdp_detach(env.itf_index, __xdp_flags, NULL);
 
 cleanup:
     xdp_pass_bpf__destroy(obj);
