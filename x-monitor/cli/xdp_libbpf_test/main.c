@@ -26,6 +26,7 @@ struct args {
 };
 
 static uint32_t __xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
+static uint32_t __prog_id;
 
 static const struct argp_option __opts[] = {
     { "itf", 'i', "-1", OPTION_ARG_OPTIONAL, "Interface name", 0 },
@@ -50,6 +51,22 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state) {
         return ARGP_ERR_UNKNOWN;
     }
     return 0;
+}
+
+static void sig_handler(int sig) {
+    __u32 curr_prog_id = 0;
+
+    if (bpf_get_link_xdp_id(env.itf_index, &curr_prog_id, __xdp_flags)) {
+        debug("bpf_get_link_xdp_id failed\n");
+        exit(1);
+    }
+    if (__prog_id == curr_prog_id)
+        bpf_set_link_xdp_fd(env.itf_index, -1, __xdp_flags);
+    else if (!curr_prog_id)
+        debug("couldn't find a prog id on a given interface\n");
+    else
+        debug("program on interface changed, not removing\n");
+    return;
 }
 
 int32_t main(int32_t argc, char **argv) {
@@ -110,19 +127,35 @@ int32_t main(int32_t argc, char **argv) {
     int32_t prog_fd = bpf_program__fd(obj->progs.xdp_prog_simple);
     debug("bpf prog xdp_prog_simple fd:%d", map_fd);
 
+    signal(SIGINT, sig_handler);
+    signal(SIGTERM, sig_handler);
+
     // 附加 它是可选的，你可以通过直接使用 libbpf API 获得更多控制）；
     // ret = xdp_pass_bpf__attach(obj);
-    ret = bpf_xdp_attach(prog_fd, env.itf_index, __xdp_flags, NULL);
-    if (ret) {
-        fprintf(stderr, "failed to attach BPF programs. ret: %d err: %s\n", ret, strerror(errno));
+    // ret = bpf_xdp_attach(prog_fd, env.itf_index, __xdp_flags, NULL);
+    // 使用bpf_set_link_xdp_fd执行attach成功，和bpf_xdp_attach差异在于old_prog_fd这个参数
+    ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, __xdp_flags);
+    if (ret < 0) {
+        fprintf(stderr, "link set xdp fd failed. ret: %d err: %s\n", ret, strerror(errno));
         goto cleanup;
     } else {
         debug("BPF programs attached");
     }
 
-    sleep(1);
+    struct bpf_prog_info info     = {};
+    uint32_t             info_len = sizeof(info);
 
-    bpf_xdp_detach(env.itf_index, __xdp_flags, NULL);
+    ret = bpf_obj_get_info_by_fd(prog_fd, &info, &info_len);
+    if (ret) {
+        fprintf(stderr, "can't get prog info: %s\n", strerror(errno));
+    }
+    __prog_id = info.id;
+    debug("prog id: %d", __prog_id);
+
+    sleep(1000);
+
+    // bpf_xdp_detach(env.itf_index, __xdp_flags, NULL);
+    debug("xdp detach");
 
 cleanup:
     xdp_pass_bpf__destroy(obj);
