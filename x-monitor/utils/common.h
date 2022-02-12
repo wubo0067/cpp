@@ -48,13 +48,14 @@ extern "C" {
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <sys/wait.h>
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
 #include <uuid/uuid.h>
-#include <uv.h>
+//#include <uv.h>
 
 #define __new(T) (typeof(T)) calloc(1, sizeof(T))
 #define __delete(P) free((void *)(P))

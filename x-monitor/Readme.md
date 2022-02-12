@@ -3,7 +3,7 @@
    - 依赖
 
      ```
-     dnf install libev.x86_64 libev-devel.x86_64
+     dnf install libev.x86_64 libev-devel.x86_64 libuuid-devel.x86_64
      wget https://ftp.gnu.org/gnu/nettle/nettle-3.7.tar.gz
      wget https://ftp.gnu.org/gnu/libidn/libidn2-2.3.2.tar.gz
      git clone https://github.com/libffi/libffi.git
