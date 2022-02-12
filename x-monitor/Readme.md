@@ -16,6 +16,18 @@
      https://www.gnu.org/software/libunistring/#TOCdownloading
      ```
 
+   - 安装静态库，配置repo，vim CodeReady.repo
+
+     ```
+     [CodeReady]
+     name=codeready
+     baseurl=http://yum.oracle.com/repo/OracleLinux/OL8/codeready/builder/x86_64
+     gpgcheck=0
+     enabled=1
+     ```
+
+     安装静态库， yum install glibc-static libstdc++-static.x86_64 zlib-static.x86_64
+
    - microhttpd不支持https，减少库的依赖
 
      ```
