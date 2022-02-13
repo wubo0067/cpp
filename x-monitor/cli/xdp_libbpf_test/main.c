@@ -17,51 +17,53 @@
 #include <linux/if_link.h>
 #include "xdp_pass.skel.h"
 
+// bin/xdp_libbpf_test --itf=ens160 -v
+
+enum xdp_action_type {
+    XDP_ACTION_ATTACH = 0,
+    XDP_ACTION_DETACH,
+};
+
 struct args {
-    int32_t itf_index;
-    bool    verbose;
+    int32_t              itf_index;
+    enum xdp_action_type action_type;
+    uint32_t             xdp_flags;
+    bool                 verbose;
 } env = {
     .itf_index = -1,  // 所有的网卡
+    .xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST,
     .verbose   = true,
 };
 
-static uint32_t __xdp_flags = XDP_FLAGS_UPDATE_IF_NOEXIST;
 static uint32_t __prog_id;
 
-static const struct argp_option __opts[] = {
-    { "itf", 'i', "-1", OPTION_ARG_OPTIONAL, "Interface name", 0 },
-    { "verbose", 'v', NULL, 0, "Verbose debug output", 0 },
-    { NULL },
+static const char *__optstr = "i:sfv";
+
+static const struct option __opts[] = {
+    { "itf", required_argument, NULL, 'i' }, { "type", required_argument, NULL, 't' },
+    { "skb", no_argument, NULL, 's' },       { "force_load", no_argument, NULL, 'f' },
+    { "verbose", no_argument, NULL, 'v' },   { 0, 0, 0, 0 },
 };
 
-static error_t parse_arg(int key, char *arg, struct argp_state *state) {
-    switch (key) {
-    case 'v':
-        env.verbose = true;
-        break;
-    case 'i':
-        env.itf_index = if_nametoindex(arg);
-        if (unlikely(!env.itf_index)) {
-            fprintf(stderr, "invalid interface name: %s, err: %s\n", arg, strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-        debug("ift_index:%d, itf name:%s", env.itf_index, arg);
-        break;
-    default:
-        return ARGP_ERR_UNKNOWN;
-    }
-    return 0;
+static void usage(const char *prog) {
+    fprintf(stderr,
+            "usage: %s [OPTS] --itf=IFNAME\n\n"
+            "OPTS:\n"
+            "    -s    use skb-mode\n"
+            "    -f    force loading prog\n"
+            "    -v    verbose\n",
+            prog);
 }
 
 static void sig_handler(int sig) {
     __u32 curr_prog_id = 0;
 
-    if (bpf_get_link_xdp_id(env.itf_index, &curr_prog_id, __xdp_flags)) {
+    if (bpf_get_link_xdp_id(env.itf_index, &curr_prog_id, env.xdp_flags)) {
         debug("bpf_get_link_xdp_id failed\n");
         exit(1);
     }
     if (__prog_id == curr_prog_id)
-        bpf_set_link_xdp_fd(env.itf_index, -1, __xdp_flags);
+        bpf_set_link_xdp_fd(env.itf_index, -1, env.xdp_flags);
     else if (!curr_prog_id)
         debug("couldn't find a prog id on a given interface\n");
     else
@@ -71,22 +73,57 @@ static void sig_handler(int sig) {
 
 int32_t main(int32_t argc, char **argv) {
     int32_t ret = 0;
+    int32_t opt;
 
     debugLevel = 9;
     debugFile  = fdopen(STDOUT_FILENO, "w");
 
-    static const struct argp argp = {
-        .options = __opts,
-        .parser  = parse_arg,
-        .doc     = "./xdp_pass_test --itf=ens160 -v",
-    };
-
-    ret = argp_parse(&argp, argc, argv, 0, NULL, NULL);
-    if (unlikely(ret)) {
-        return -1;
+    while ((opt = getopt_long(argc, argv, __optstr, __opts, NULL)) != -1) {
+        switch (opt) {
+        case 'v':
+            env.verbose = true;
+            break;
+        case 'i':
+            env.itf_index = if_nametoindex(optarg);
+            if (unlikely(!env.itf_index)) {
+                fprintf(stderr, "invalid interface name: %s, err: %s\n", optarg, strerror(errno));
+                exit(EXIT_FAILURE);
+            }
+            debug("ift_index:%d, itf_name:%s", env.itf_index, optarg);
+            break;
+        case 's':
+            env.xdp_flags |= XDP_FLAGS_SKB_MODE;
+            debug("xdp flags set skb mode");
+            break;
+        case 'f':
+            env.xdp_flags &= ~XDP_FLAGS_UPDATE_IF_NOEXIST;
+            debug("xdp flags force load");
+            break;
+        case 't':
+            if (!strcmp(optarg, "attach")) {
+                env.action_type = XDP_ACTION_ATTACH;
+            } else if (!strcmp(optarg, "detach")) {
+                env.action_type = XDP_ACTION_DETACH;
+            } else {
+                fprintf(stderr, "invalid action type: %s\n", optarg);
+                exit(EXIT_FAILURE);
+            }
+            break;
+        default:
+            usage(basename(argv[0]));
+            return 1;
+        }
     }
 
-    __xdp_flags |= XDP_FLAGS_SKB_MODE;
+    if (!(env.xdp_flags & XDP_FLAGS_SKB_MODE)) {
+        env.xdp_flags |= XDP_FLAGS_DRV_MODE;
+    }
+
+    // if (optind == argc) {
+    //     debug("optind:%d, argc:%d", optind, argc);
+    //     usage(basename(argv[0]));
+    //     return 1;
+    // }
 
     libbpf_set_strict_mode(LIBBPF_STRICT_ALL);
     // Libbpf 日志
@@ -134,7 +171,7 @@ int32_t main(int32_t argc, char **argv) {
     // ret = xdp_pass_bpf__attach(obj);
     // ret = bpf_xdp_attach(prog_fd, env.itf_index, __xdp_flags, NULL);
     // 使用bpf_set_link_xdp_fd执行attach成功，和bpf_xdp_attach差异在于old_prog_fd这个参数
-    ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, __xdp_flags);
+    ret = bpf_set_link_xdp_fd(env.itf_index, prog_fd, env.xdp_flags);
     if (ret < 0) {
         fprintf(stderr, "link set xdp fd failed. ret: %d err: %s\n", ret, strerror(errno));
         goto cleanup;
