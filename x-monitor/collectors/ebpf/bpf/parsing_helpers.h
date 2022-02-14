@@ -32,7 +32,7 @@ static __always_inline __s32 proto_is_vlan(__u16 h_proto) {
 }
 
 // 返回IP包承载的具体协议类型，tcp、udp、icmp等
-static __always_inline __s32 parse_iphdr(struct hdr_cursor *nh, void *data_end,
+static __always_inline __u8 parse_ip4hdr(struct hdr_cursor *nh, void *data_end,
                                          struct iphdr **iphdr) {
     struct iphdr *iph = nh->pos;
     int           hdrsize;
@@ -55,8 +55,8 @@ static __always_inline __s32 parse_iphdr(struct hdr_cursor *nh, void *data_end,
     return iph->protocol;
 }
 
-static __always_inline int parse_ip6hdr(struct hdr_cursor *nh, void *data_end,
-                                        struct ipv6hdr **ip6hdr) {
+static __always_inline __u8 parse_ip6hdr(struct hdr_cursor *nh, void *data_end,
+                                         struct ipv6hdr **ip6hdr) {
     struct ipv6hdr *ip6h = nh->pos;
 
     /* Pointer-arithmetic bounds check; pointer +1 points to after end of
@@ -79,12 +79,12 @@ static __always_inline int get_dport(void *trans_data, void *data_end, __u8 prot
     switch (protocol) {
     case IPPROTO_TCP:
         th = (struct tcphdr *)trans_data;
-        if (th + 1 > data_end)
+        if ((void *)(th + 1) > data_end)
             return -1;
         return th->dest;
     case IPPROTO_UDP:
         uh = (struct udphdr *)trans_data;
-        if (uh + 1 > data_end)
+        if ((void *)(uh + 1) > data_end)
             return -1;
         return uh->dest;
     default:

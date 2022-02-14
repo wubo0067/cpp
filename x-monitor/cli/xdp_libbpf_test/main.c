@@ -35,9 +35,9 @@ struct args {
     .verbose   = true,
 };
 
-static uint32_t __prog_id;
-
-static const char *__optstr = "i:sfv";
+static uint32_t     __prog_id;
+static sig_atomic_t __sig_exit = 0;
+static const char * __optstr   = "i:sfv";
 
 static const struct option __opts[] = {
     { "itf", required_argument, NULL, 'i' }, { "type", required_argument, NULL, 't' },
@@ -58,6 +58,8 @@ static void usage(const char *prog) {
 static void sig_handler(int sig) {
     __u32 curr_prog_id = 0;
 
+    __sig_exit = 1;
+
     if (bpf_get_link_xdp_id(env.itf_index, &curr_prog_id, env.xdp_flags)) {
         debug("bpf_get_link_xdp_id failed\n");
         exit(1);
@@ -68,6 +70,44 @@ static void sig_handler(int sig) {
         debug("couldn't find a prog id on a given interface\n");
     else
         debug("program on interface changed, not removing\n");
+
+    debug("xdp detach");
+    return;
+}
+
+static void poll_stats(int32_t map_fd, int32_t interval) {
+    uint32_t nr_cpus = libbpf_num_possible_cpus();
+    debug("nr_cpus: %u\n", nr_cpus);
+
+    uint64_t values[nr_cpus], prev[UINT8_MAX] = { 0 };
+
+    while (!__sig_exit) {
+        int32_t lookup_key = -1, next_key;
+
+        // 轮询map中所有元素
+        while (bpf_map_get_next_key(map_fd, &lookup_key, &next_key) == 0) {
+            if (__sig_exit)
+                break;
+
+            uint64_t sum = 0;
+            // TODO: values是个core核数的数组，这是BPF_MAP_TYPE_PERCPU_ARRAY特性？
+            assert(bpf_map_lookup_elem(map_fd, &next_key, values) == 0);
+            for (uint32_t i = 0; i < nr_cpus; i++) {
+                sum += values[i];
+            }
+            // debug("proto: %d, lookup_key: %d sum: %lu, prev_sum: %lu\n", next_key, lookup_key,
+            // sum,
+            //       prev[next_key]);
+            if (sum > prev[next_key]) {
+                debug("proto %d: sum rx_cnt: %lu, %lu pkt/s", next_key, sum,
+                      (sum - prev[next_key]) / interval);
+            }
+            prev[next_key] = sum;
+
+            lookup_key = next_key;
+        }
+        sleep(interval);
+    }
     return;
 }
 
@@ -146,6 +186,10 @@ int32_t main(int32_t argc, char **argv) {
         debug("BPF object opened");
     }
 
+    // 设置初始值
+    memset(obj->rodata->target_name, 0, sizeof(obj->rodata->target_name));
+    strcpy(obj->rodata->target_name, "xdp_libbpf");
+
     // 加载
     ret = xdp_pass_bpf__load(obj);
     if (unlikely(0 != ret)) {
@@ -189,10 +233,9 @@ int32_t main(int32_t argc, char **argv) {
     __prog_id = info.id;
     debug("prog id: %d", __prog_id);
 
-    sleep(1000);
+    poll_stats(map_fd, 2);
 
     // bpf_xdp_detach(env.itf_index, __xdp_flags, NULL);
-    debug("xdp detach");
 
 cleanup:
     xdp_pass_bpf__destroy(obj);

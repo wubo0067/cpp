@@ -12,10 +12,14 @@
 #include "common.h"
 #include "parsing_helpers.h"
 
+const volatile char target_name[16] = { 0 };
+
 // ip协议包数量统计
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, __u32);
+    __type(key, __u32);  // 这里我是用__u8的时候，创建map会报错，libbpf: Error in
+                         // bpf_create_map_xattr(ipproto_rx_cnt_map):Invalid argument(-22). Retrying
+                         // without BTF.
     __type(value, __u64);
     __uint(max_entries, 256);
 } ipproto_rx_cnt_map SEC(".maps");
@@ -48,18 +52,19 @@ SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
         h_proto = vhdr->h_vlan_encapsulated_proto;
     }
 
-    __u32           ip_proto;
+    __u32           ip_proto = IPPROTO_UDP;
     struct iphdr *  iphdr;
     struct ipv6hdr *ipv6hdr;
 
     struct hdr_cursor nh = { .pos = data + nh_off };
 
+    /* Extract L4 protocol */
     if (h_proto == bpf_htons(ETH_P_IP)) {
         // 返回ipv4包承载的协议类型
-        ip_proto = parse_iphdr(&nh, data_end, &iphdr);
+        ip_proto = (__u32)parse_ip4hdr(&nh, data_end, &iphdr);
     } else if (h_proto == bpf_htons(ETH_P_IPV6)) {
         // 返回ipv6包承载的协议类型
-        ip_proto = parse_ip6hdr(&nh, data_end, &ipv6hdr);
+        ip_proto = (__u32)parse_ip6hdr(&nh, data_end, &ipv6hdr);
     } else {
         // 其他协议
         ip_proto = 0;
@@ -71,6 +76,18 @@ SEC("xdp") __s32 xdp_prog_simple(struct xdp_md *ctx) {
     } else {
         __u64 init_value = 1;
         bpf_map_update_elem(&ipproto_rx_cnt_map, &ip_proto, &init_value, BPF_NOEXIST);
+    }
+
+    switch (ip_proto) {
+    case IPPROTO_ICMP:
+        bpf_printk("'%s' ICMP rc_cxt = %lu\n", target_name, (rx_cnt) ? *rx_cnt : 1);
+    case IPPROTO_TCP:
+        bpf_printk("'%s' TCP rc_cxt = %lu\n", target_name, (rx_cnt) ? *rx_cnt : 1);
+    case IPPROTO_UDP:
+        bpf_printk("'%s' UDP rc_cxt = %lu\n", target_name, (rx_cnt) ? *rx_cnt : 1);
+    default:
+        bpf_printk("'%s' OTHER proto: %u rc_cxt = %lu\n", target_name, ip_proto,
+                   (rx_cnt) ? *rx_cnt : 1);
     }
 
     return XDP_PASS;
