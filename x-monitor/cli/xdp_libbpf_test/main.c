@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2022-02-11 10:36:28
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-11 18:01:16
+ * @Last Modified time: 2022-02-15 15:22:34
  */
 #include <argp.h>
 
@@ -75,7 +75,7 @@ static void sig_handler(int sig) {
     return;
 }
 
-static void poll_stats(int32_t map_fd, int32_t interval) {
+static void poll_stats(int32_t map_fd, int32_t xdp_stats_map_fd, int32_t interval) {
     uint32_t nr_cpus = libbpf_num_possible_cpus();
     debug("nr_cpus: %u\n", nr_cpus);
 
@@ -106,6 +106,9 @@ static void poll_stats(int32_t map_fd, int32_t interval) {
 
             lookup_key = next_key;
         }
+
+        bpf_xdp_stats_print(xdp_stats_map_fd);
+
         sleep(interval);
     }
     return;
@@ -204,6 +207,9 @@ int32_t main(int32_t argc, char **argv) {
 
     int32_t map_fd = bpf_map__fd(obj->maps.ipproto_rx_cnt_map);
     debug("bpf map ipproto_rx_cnt_map fd:%d", map_fd);
+
+    int32_t xdp_stats_map_fd = bpf_map__fd(obj->maps.xdp_stats_map);
+    debug("bpf map xdp_stats_map fd:%d", xdp_stats_map_fd);
 
     int32_t prog_fd = bpf_program__fd(obj->progs.xdp_prog_simple);
     debug("bpf prog xdp_prog_simple fd:%d", map_fd);

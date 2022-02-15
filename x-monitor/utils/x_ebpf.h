@@ -2,7 +2,7 @@
  * @Author: CALM.WU
  * @Date: 2021-11-03 11:26:22
  * @Last Modified by: CALM.WU
- * @Last Modified time: 2022-02-11 11:16:17
+ * @Last Modified time: 2022-02-15 15:06:30
  */
 
 #pragma once
@@ -43,6 +43,10 @@ extern const char *bpf_get_ksym_name(uint64_t addr);
 
 extern int32_t open_raw_sock(const char *iface);
 
+extern const char *bpf_xdpaction2str(uint32_t action);
+
+extern int32_t bpf_get_bpf_map_info(int32_t fd, struct bpf_map_info *info, int32_t verbose);
+
 // struct perf_event_attr;
 
 // static inline int sys_perf_event_open(struct perf_event_attr *attr, pid_t pid,
@@ -51,6 +55,8 @@ extern int32_t open_raw_sock(const char *iface);
 // {
 //     return syscall(__NR_perf_event_open, attr, pid, cpu, group_fd, flags);
 // }
+
+extern void bpf_xdp_stats_print(int32_t xdp_stats_map_fd);
 
 #ifdef __cplusplus
 }
