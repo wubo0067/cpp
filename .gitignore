@@ -1,2 +1,3 @@
 # Ignore all bazel-* symlinks.
 /bazel-*
+*.rar
